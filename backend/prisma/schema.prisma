@@ -1,0 +1,622 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============== SECURITY & AUTHENTICATION ===============
+// Bảo mật theo tiêu chuẩn:
+// 1. Mật khẩu: Hash BCrypt (không lưu plaintext)
+// 2. Token: JWT được cấp sau khi xác thực thành công
+// 3. Mã hóa: Dữ liệu nhạy cảm (credit card) sử dụng AES-256
+// 4. Audit: Tất cả thay đổi được ghi lại via AuditLog
+// 5. Access Control: Phân quyền nghiêm ngặt - Doctor/Technician KHÔNG được access Credit Card
+
+// =============== USERS & ROLES ===============
+enum UserRole {
+  PATIENT
+  DOCTOR
+  TECHNICIAN
+  STAFF
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+model User {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  phoneNumber       String     @unique  // Dùng để đăng nhập (theo yêu cầu)
+  passwordHash      String     // Hash BCrypt (không bao giờ lưu plaintext) - chống Brute-force
+  firstName         String
+  lastName          String
+  dateOfBirth       DateTime?
+  gender            Gender?
+  address           String?
+  city              String?
+  country           String?
+  profilePicture    String?
+  role              UserRole   @default(PATIENT)
+  isActive          Boolean    @default(true)
+  isLocked          Boolean    @default(false)  // Khóa tài khoản (Admin)
+  failedLoginAttempts Int      @default(0)      // Chống brute-force attack
+  lastLoginAt       DateTime?  // Lần đăng nhập gần nhất
+  passwordChangedAt DateTime?  // Lần thay đổi mật khẩu gần nhất
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Relationships
+  patient           Patient?
+  doctor            Doctor?
+  technician        Technician?
+  staff             Staff?
+  appointments      Appointment[]
+  labResults        LabResult[]
+  payments          Payment[]
+  medicalRecords    MedicalRecord[]
+  prescriptions     Prescription[]
+  notifications     Notification[]
+  conversationSessions ConversationSession[]
+  chatMessages      ChatMessage[]
+  auditLogs         AuditLog[]
+  userSessions      UserSession[]
+  cancellationRequests CancellationRequest[]
+}
+
+// =============== PATIENT DATA ===============
+model Patient {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  bloodType         String?
+  allergies         String?
+  chronicDiseases   String?
+  emergencyContact  String?
+  insuranceId       String?
+  insuranceProvider String?
+  nextAppointment   DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicalRecords    MedicalRecord[]
+  appointments      Appointment[]
+  labResults        LabResult[]
+  prescriptions     Prescription[]
+}
+
+// =============== DOCTOR DATA ===============
+model Doctor {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  specialization    String     // Chuyên khoa
+  degree            String?    // Học vấn (Tiến sĩ, Thạc sĩ, etc.)
+  licenseNumber     String     @unique
+  department        String
+  office            String?    // Phòng làm việc
+  experience        Int?       // Năm kinh nghiệm
+  achievements      String?    // Thành tích (JSON hoặc text)
+  rating            Float?     @default(0)
+  availableSlots    String?    // JSON format: {"Monday": [{"start": "09:00", "end": "17:00"}]}
+  isAvailable       Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments      Appointment[]
+  medicalRecords    MedicalRecord[]
+  prescriptions     Prescription[]
+  labResults        LabResult[]
+  cancellationRequests CancellationRequest[]
+}
+
+// =============== TECHNICIAN DATA ===============
+model Technician {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  department        String?
+  specialization    String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  labResults        LabResult[]
+}
+
+// =============== STAFF DATA ===============
+model Staff {
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  position          String?    // Vị trí công việc
+  department        String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// =============== APPOINTMENTS ===============
+// Quy trình Appointment:
+// 1. Bệnh nhân: Nhập triệu chứng
+// 2. AI (Gemini via Backend proxy): Phân tích & gợi ý khoa (department)
+// 3. Bệnh nhân: Chọn ngày/giờ
+// 4. Backend: Tự động chọn Doctor (balance workload)
+// 5. Notification: Gửi tới Doctor
+// 6. Doctor: Có thể hủy → CancellationRequest → Admin xử lý
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Appointment {
+  id                String     @id @default(cuid())
+  patientId         String
+  doctorId          String
+  userId            String
+  date              DateTime
+  duration          Int?       // in minutes
+  status            AppointmentStatus @default(PENDING)
+  reason            String?    // Lý do khám
+  symptoms          String?    // Triệu chứng (nhập bởi bệnh nhân)
+  department        String?    // Khoa được AI phân tích (qua Gemini proxy)
+  aiDiagnosis       String?    // Chẩn đoán sơ bộ từ AI
+  notes             String?
+  consultationType  String?    // ONLINE, IN_PERSON
+  meetingUrl        String?    // For online appointments
+  cancelReason      String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  patient           Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor            Doctor     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicalRecord     MedicalRecord?
+}
+
+// =============== MEDICAL RECORDS ===============
+// Bảo mật: Hồ sơ bệnh án phải được bảo vệ theo quy định
+// Quy tắc chỉnh sửa: Doctor chỉ có thể chỉnh sửa trong 3 ngày từ khi tạo
+// Audit: Mọi thay đổi đều được ghi lại via AuditLog (ai, khi nào, đổi gì)
+// Access Control: Chỉ Doctor (chủ quản), Technician (view xét nghiệm), Patient (view) được truy cập
+
+enum RecordType {
+  GENERAL_CHECKUP
+  CONSULTATION
+  DIAGNOSIS
+  TREATMENT
+  FOLLOW_UP
+  SURGERY
+  VACCINATION
+}
+
+model MedicalRecord {
+  id                String     @id @default(cuid())
+  patientId         String
+  doctorId          String
+  appointmentId     String?    @unique
+  recordType        RecordType
+  diagnosis         String?    // Chẩn đoán
+  symptoms          String?    // Triệu chứng
+  treatment         String?    // Điều trị
+  notes             String?
+  attachmentUrl     String?
+  recordDate        DateTime   @default(now())
+  canEditUntil      DateTime?  // Hạn chỉnh sửa: recordDate + 3 days (enforce tại Backend)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  patient           Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "MedicalRecord_patient_fkey")
+  doctor            Doctor     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointment       Appointment? @relation(fields: [appointmentId], references: [id])
+  labResults        LabResult[]
+  prescriptions     Prescription[]
+  user              User       @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "MedicalRecord_user_fkey")
+}
+
+// =============== LAB RESULTS ===============
+// Bảo mật Xét nghiệm:
+// 1. Technician: Nhập và cập nhật kết quả (resultValue, normalRange, file PDF/Image)
+// 2. Doctor: View để phân tích (KHÔNG nhập kết quả)
+// 3. Patient: View kết quả cá nhân
+// 4. Admin: View toàn bộ (management)
+// 5. AuditLog: Ghi lại khi Technician cập nhật hoặc Doctor view
+
+model LabResult {
+  id                String     @id @default(cuid())
+  patientId         String
+  doctorId          String
+  technicianId      String?    // Kỹ thuật viên nhập kết quả
+  medicalRecordId   String?
+  testName          String
+  testCode          String?
+  status            String?    // PENDING, COMPLETED, ABNORMAL
+  resultValue       String?    // Giá trị kết quả (nhập bởi Technician)
+  resultUnit        String?    // Đơn vị (mg/dL, etc.)
+  normalRange       String?    // Khoảng bình thường
+  referenceValue    String?
+  description       String?    // Mô tả chi tiết
+  conclusion        String?    // Kết luận
+  attachmentUrl     String?    // PDF/Image (Technician tải lên)
+  testDate          DateTime
+  completedDate     DateTime?
+  notes             String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  patient           Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor            Doctor     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  technician        Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  medicalRecord     MedicalRecord? @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+// =============== PRESCRIPTIONS ===============
+// Quy tắc Kê đơn:
+// 1. Doctor: Kê đơn trực tiếp trên hệ thống
+// 2. Chỉnh sửa: Trong vòng 3 ngày từ khi kê (qua MedicalRecord.canEditUntil)
+// 3. AuditLog: Ghi lại tất cả thay đổi
+// 4. Patient: View đơn thuốc & lịch sử
+// 5. Notification: Tự động gửi tới Patient khi kê đơn
+
+model Prescription {
+  id                String     @id @default(cuid())
+  patientId         String
+  doctorId          String
+  medicalRecordId   String?
+  medicationName    String     // Tên thuốc
+  treatmentType     String?    // Chữa bệnh gì
+  dosage            String     // Liều dùng
+  frequency         String     // Cách dùng (3 lần/ngày)
+  duration          Int?       // Thời gian (ngày)
+  quantity          Int?       // Số lượng
+  instructions      String?    // Hướng dẫn
+  refills           Int?       @default(0)
+  prescriptionDate  DateTime   @default(now())
+  expiryDate        DateTime?
+  isActive          Boolean    @default(true)
+  notes             String?    // Lưu ý từ bác sĩ
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  patient           Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor            Doctor     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  medicalRecord     MedicalRecord? @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+// =============== PAYMENTS ===============
+// Bảo mật Thanh toán: Sử dụng AES-256 để mã hóa tất cả thông tin credit card
+// Access Control: Chỉ bệnh nhân và admin có thể view. Doctor/Technician KHÔNG được phép truy cập.
+// Quy trình: Mã hóa tại Backend (Node.js crypto module) trước khi lưu vào PostgreSQL
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  E_WALLET
+  CASH
+  QR_CODE
+}
+
+model CreditCard {
+  id                String     @id @default(cuid())
+  userId            String
+  // Tất cả các field dưới đây được mã hóa AES-256 trước khi lưu
+  cardholderName    String     // Họ và tên (mã hóa AES-256)
+  cardNumber        String     // Số thẻ (mã hóa AES-256)
+  expiryDate        String     // Ngày hết hạn MM/YY (mã hóa AES-256)
+  cvv               String     // Mã CVV (mã hóa AES-256)
+  address           String?    // Địa chỉ (mã hóa AES-256)
+  city              String?    // Thành phố (mã hóa AES-256)
+  postalCode        String?    // Mã bưu điện (mã hóa AES-256)
+  isEncrypted       Boolean    @default(true)  // Flag: dữ liệu đã mã hóa AES-256
+  isDefault         Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments          Payment[]
+}
+
+model Payment {
+  id                String     @id @default(cuid())
+  userId            String
+  appointmentId     String?
+  amount            Float
+  currency          String     @default("USD")
+  status            PaymentStatus @default(PENDING)
+  method            PaymentMethod?
+  creditCardId      String?    // Nếu thanh toán bằng thẻ
+  transactionId     String?    @unique
+  paymentDate       DateTime?
+  description       String?    // Tên dịch vụ
+  invoiceUrl        String?    // URL hóa đơn
+  notes             String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creditCard        CreditCard? @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+}
+
+// =============== HOSPITAL SERVICES ===============
+// Dịch vụ bệnh viện:
+// 1. Admin: Tạo/sửa/xóa các loại dịch vụ
+// 2. Patient: View toàn bộ dịch vụ (tên, tóm tắt, giá, thời gian)
+// 3. Payment: Tham chiếu để tính phí
+
+model HospitalService {
+  id                String     @id @default(cuid())
+  name              String
+  description       String?
+  category          String     // e.g., "Emergency", "Surgery", "Consultation"
+  price             Float?
+  duration          Int?       // in minutes
+  availability      String?    // JSON format
+  imageUrl          String?
+  isActive          Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+// =============== MEDICAL LIBRARY ===============
+// Thư viện toàn thư:
+// 1. Admin: Xuất bản và chỉnh sửa nội dung
+// 2. Tất cả người dùng (Patient, Doctor, Technician): Tra cứu
+// 3. Dữ liệu: Công khai, không nhạy cảm
+// 4. Mỗi mục bao gồm: Tên, Loại, Tóm tắt, Chi tiết
+
+model Disease {
+  id                String     @id @default(cuid())
+  name              String     // Tên bệnh
+  type              String?    // Loại bệnh
+  summary           String?    // Nội dung tóm tắt
+  detail            String     // Nội dung chi tiết
+  author            String?    // Tác giả
+  imageUrl          String?
+  tags              String?    // JSON array
+  views             Int        @default(0)
+  likes             Int        @default(0)
+  isPublished       Boolean    @default(true)
+  publishedDate     DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model Drug {
+  id                String     @id @default(cuid())
+  name              String     // Tên thuốc
+  type              String?    // Loại thuốc
+  summary           String?    // Tóm tắt
+  detail            String     // Chi tiết
+  author            String?
+  imageUrl          String?
+  tags              String?    // JSON array
+  views             Int        @default(0)
+  likes             Int        @default(0)
+  isPublished       Boolean    @default(true)
+  publishedDate     DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model Procedure {
+  id                String     @id @default(cuid())
+  name              String     // Tên quy trình
+  type              String?    // Loại quy trình
+  summary           String?    // Tóm tắt
+  detail            String     // Chi tiết
+  author            String?
+  imageUrl          String?
+  tags              String?    // JSON array
+  views             Int        @default(0)
+  likes             Int        @default(0)
+  isPublished       Boolean    @default(true)
+  publishedDate     DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model LabTest {
+  id                String     @id @default(cuid())
+  name              String     // Tên xét nghiệm
+  type              String?    // Loại xét nghiệm
+  summary           String?    // Tóm tắt
+  detail            String     // Chi tiết
+  author            String?
+  imageUrl          String?
+  tags              String?    // JSON array
+  views             Int        @default(0)
+  likes             Int        @default(0)
+  isPublished       Boolean    @default(true)
+  publishedDate     DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+// =============== SESSION & JWT MANAGEMENT ===============
+// Lưu vết các JWT sessions - giúp theo dõi hoạt động người dùng
+// JWT Token không được lưu trực tiếp, chỉ lưu metadata của session
+
+model UserSession {
+  id                String     @id @default(cuid())
+  userId            String
+  tokenHash         String?    // Hash của JWT (nếu cần revocation)
+  deviceName        String?    // Thiết bị đăng nhập (Desktop, Mobile, etc.)
+  ipAddress         String?    // IP Address (HTTPS/SSL-TLS bảo vệ)
+  userAgent         String?    // Browser/App info
+  expiresAt         DateTime
+  isActive          Boolean    @default(true)
+  revokedAt         DateTime?  // Khi logout hoặc session hết hạn
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// =============== AI & EXTERNAL SERVICES ===============
+// API Key cho Google Gemini - Chỉ lưu ở Backend, Frontend không bao giờ thấy
+// Proxy: Frontend → Backend → Gemini API
+// Lợi ích: Che giấu API key, kiểm soát nội dung request/response trước khi lưu lịch sử
+
+model GeminiAPIKey {
+  id                String     @id @default(cuid())
+  apiKey            String     // Mã hóa/lưu trữ an toàn
+  isActive          Boolean    @default(true)
+  description       String?
+  quotaUsed         Int        @default(0)   // Theo dõi usage
+  quotaLimit        Int?       // Limit theo tháng
+  resetAt           DateTime?  // Reset quota date
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  // Admin only - không có User relationship
+}
+// =============== NOTIFICATIONS ===============
+// Hệ thống thông báo:
+// 1. Tự động tạo khi có event quan trọng
+// 2. Gửi tới: Patient (results, reminders), Doctor (new appointments), Technician (tasks)
+// 3. Lưu vết: read/unread status, thời gian đọc
+
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  LAB_RESULT_READY
+  PAYMENT_REMINDER
+  PRESCRIPTION_REFILL
+  MESSAGE
+  SYSTEM_ALERT
+  GENERAL
+}
+
+model Notification {
+  id                String     @id @default(cuid())
+  userId            String
+  title             String
+  message           String
+  type              NotificationType
+  isRead            Boolean    @default(false)
+  actionUrl         String?
+  createdAt         DateTime   @default(now())
+  readAt            DateTime?
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// =============== AUDIT LOGS & COMPLIANCE ===============
+// Ghi lại tất cả thay đổi quan trọng - yêu cầu bắt buộc theo quy định y tế
+// Trigger: Tạo tự động khi có CREATE, UPDATE, DELETE trên các entity quan trọng
+// Mục đích: Audit trail cho compliance, troubleshooting, security investigation
+
+model AuditLog {
+  id                String     @id @default(cuid())
+  userId            String     // Ai thực hiện thay đổi (có thể là Admin, Doctor, etc.)
+  entity            String     // Loại entity (User, Patient, Doctor, MedicalRecord, Payment, etc.)
+  entityId          String     // ID của entity bị thay đổi
+  action            String     // CREATE, UPDATE, DELETE, ACCESS
+  resourceBefore    String?    // JSON: Trạng thái trước (đối với UPDATE)
+  resourceAfter     String?    // JSON: Trạng thái sau (đối với CREATE/UPDATE)
+  changes           String?    // JSON: Chi tiết thay đổi [{field, oldValue, newValue}]
+  description       String?    // Mô tả tóm tắt
+  ipAddress         String?    // IP Address của request (HTTPS bảo vệ)
+  userAgent         String?    // Browser/Client info
+  timestamp         DateTime   @default(now())
+  createdAt         DateTime   @default(now())
+  
+  // Index để query nhanh
+  @@index([userId])
+  @@index([entity])
+  @@index([entityId])
+  @@index([timestamp])
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// =============== CANCELLATION REQUESTS ===============
+// Quản lý yêu cầu hủy lịch:
+// 1. Doctor: Hủy appointment → CancellationRequest (PENDING)
+// 2. Admin: Duyệt yêu cầu
+//    - APPROVED: Tìm Doctor khác cùng khoa, reschedule cho Patient
+//    - REJECTED: Yêu cầu hủy bị từ chối
+// 3. AuditLog: Ghi lại toàn bộ quy trình
+
+enum CancellationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RESCHEDULED
+}
+
+model CancellationRequest {
+  id                String     @id @default(cuid())
+  userId            String     // Thêm userId để tạo relation
+  appointmentId     String
+  doctorId          String
+  reason            String?    // Lý do hủy từ bác sĩ
+  status            CancellationStatus @default(PENDING)
+  approvedBy        String?    // Admin ID người phê duyệt
+  newAppointmentId  String?    // Lịch hẹn mới sau khi reschedule
+  notes             String?
+  requestedAt       DateTime   @default(now())
+  approvedAt        DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor            Doctor     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+// =============== CHAT MESSAGES & AI CONVERSATION ===============
+// Bảo mật Chat AI:
+// 1. Lịch sử chat được lưu để hỗ trợ chẩn đoán lâu dài
+// 2. API Key Gemini KHÔNG được tưởng Frontend - chỉ Backend có
+// 3. Tất cả request/response được proxy qua Backend, kiểm soát nội dung
+// 4. Truyền dữ liệu: HTTPS/SSL-TLS bảo vệ toàn bộ luồng
+// 5. Lưu vết: AuditLog ghi lại khi có truy cập dữ liệu nhạy cảm
+
+model ConversationSession {
+  id                String     @id @default(cuid())
+  userId            String
+  title             String?    // Tiêu đề cuộc trò chuyện
+  startedAt         DateTime   @default(now())
+  endedAt           DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatMessages      ChatMessage[]
+}
+
+model ChatMessage {
+  id                String     @id @default(cuid())
+  conversationSessionId String
+  userId            String
+  message           String     // Tin nhắn từ bệnh nhân
+  messageType       String?    // "user", "bot"
+  response          String?    // Phản hồi từ AI Gemini
+  timestamp         DateTime   @default(now())
+  createdAt         DateTime   @default(now())
+
+  conversationSession ConversationSession @relation(fields: [conversationSessionId], references: [id], onDelete: Cascade)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
