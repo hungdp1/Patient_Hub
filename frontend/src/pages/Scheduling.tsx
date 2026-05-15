@@ -30,7 +30,6 @@ import {
 import { MOCK_EXAMS, MOCK_RECORDS } from '../constants';
 import { ExamStatus, type MedicalExam, UserRole, MedicalRecord } from '../types';
 import { cn } from '../lib/utils';
-import { useLanguage } from '../contexts/LanguageContext';
 
 interface Appointment {
   id: string;
@@ -43,7 +42,6 @@ interface Appointment {
 }
 
 export default function Scheduling() {
-  const { t } = useLanguage();
   const [userRole, setUserRole] = useState<UserRole>(UserRole.PATIENT);
   const [exams] = useState<MedicalExam[]>(MOCK_EXAMS);
   const [hasAppointment, setHasAppointment] = useState(false);
@@ -1112,7 +1110,7 @@ export default function Scheduling() {
     <div className="max-w-5xl mx-auto space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h2 className="text-2xl font-bold text-slate-800">{hasAppointment ? t('optimized_schedule') : 'Đặt lịch hẹn mới'}</h2>
+           <h2 className="text-2xl font-bold text-slate-800">{hasAppointment ? 'Lịch trình khám tối ưu' : 'Đặt lịch hẹn mới'}</h2>
            <p className="text-slate-500 text-sm">
              {hasAppointment 
                ? 'Hệ thống tự động sắp xếp thứ tự ưu tiên dựa trên thời gian thực tế.' 

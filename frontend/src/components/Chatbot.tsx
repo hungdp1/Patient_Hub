@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, X, Bot, User, Sparkles } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { askMedicalAI } from '../lib/gemini';
 import { cn } from '../lib/utils';
+import { ChatMessage } from './chat/ChatMessage';
+import { ChatInput } from './chat/ChatInput';
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([
-    { role: 'bot', text: 'Xin chào! Tôi là trợ lý AI của Mediflow. Tôi có thể giúp bạn giải đáp thắc mắc về bệnh lý hoặc thuật ngữ trong hồ sơ của bạn.' }
+    {
+      role: 'bot',
+      text: 'Xin chào! Tôi là trợ lý AI của Mediflow. Tôi có thể giúp bạn giải đáp thắc mắc về bệnh lý hoặc thuật ngữ trong hồ sơ của bạn.',
+    },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -63,46 +68,18 @@ export default function Chatbot() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-900 custom-scrollbar">
               {messages.map((msg, i) => (
-                <div key={i} className={cn(
-                  "flex items-end gap-3 max-w-[85%]",
-                  msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
-                )}>
-                  <div className={cn(
-                    "p-3 rounded-2xl text-xs leading-relaxed",
-                    msg.role === 'user' 
-                      ? "bg-blue-600 text-white rounded-br-none" 
-                      : "bg-slate-800 text-slate-100 rounded-bl-none border-l-2 border-primary"
-                  )}>
-                    {msg.text}
-                  </div>
-                </div>
+                <ChatMessage key={i} role={msg.role} text={msg.text} />
               ))}
               {isLoading && (
                 <div className="flex items-center gap-2 text-slate-500 text-[10px] bg-slate-800/50 px-3 py-1.5 rounded-full w-fit">
-                   <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                   Trợ lý đang xử lý...
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                  Trợ lý đang xử lý...
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <form onSubmit={handleSend} className="p-4 bg-slate-800 border-t border-white/5 flex gap-2">
-              <input 
-                type="text"
-                placeholder="Hỏi tôi bất cứ điều gì..."
-                className="flex-1 px-4 py-3 bg-slate-900/50 rounded-xl outline-none border border-transparent focus:border-primary/50 text-xs text-white placeholder:text-slate-500"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-              />
-              <button 
-                type="submit"
-                disabled={isLoading}
-                className="p-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-all font-bold"
-              >
-                <Send size={16} />
-              </button>
-            </form>
+            <ChatInput input={input} isLoading={isLoading} onChange={setInput} onSend={handleSend} />
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,24 +1,57 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { UserRole } from '../types';
+import { authService } from '../services/authService';
 import { LogIn, Lock, Phone, HeartPulse, User as UserIcon, Stethoscope, ShieldAlert, FlaskConical } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useLanguage } from '../contexts/LanguageContext';
-import { UserRole } from '../types';
 
 export default function Login() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.PATIENT);
-  const navigate = useNavigate();
-  const { t } = useLanguage();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const getDefaultUserName = (selectedRole: UserRole) => {
+    switch (selectedRole) {
+      case UserRole.ADMIN:
+        return 'Quản Lý Bệnh Viện';
+      case UserRole.DOCTOR:
+        return 'BS. Lê Thành Nam';
+      case UserRole.TECHNICIAN:
+        return 'KTV. Nguyễn Văn Khoa';
+      default:
+        return 'Nguyễn Văn A';
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone && password) {
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userRole', role);
-      localStorage.setItem('userName', role === UserRole.ADMIN ? 'Quản Lý Bệnh Viện' : role === UserRole.DOCTOR ? 'BS. Lê Thành Nam' : role === UserRole.TECHNICIAN ? 'KTV. Nguyễn Văn Khoa' : 'Nguyễn Văn A');
-      navigate('/');
+    if (!phone || !password) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await authService.login({
+        phoneNumber: phone,
+        password: password,
+      });
+
+      if (response.success && response.token) {
+        authService.setToken(response.token);
+        if (response.user) {
+          authService.setUserData(response.user);
+        }
+        localStorage.setItem('isAuthenticated', 'true');
+        // Redirect to home page after login
+        window.location.href = '/';
+      } else {
+        setError(response.message || 'Đăng nhập thất bại');
+      }
+    } catch (err) {
+      setError('Lỗi kết nối. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -38,6 +71,12 @@ export default function Login() {
         </div>
         
         <form onSubmit={handleLogin} className="p-8 space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
           <div className="space-y-4">
             <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
               <button 
@@ -103,7 +142,7 @@ export default function Login() {
             type="submit"
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
           >
-            <LogIn size={20} /> {t('logout') === 'Logout' ? 'Login' : 'Đăng nhập'}
+            <LogIn size={20} /> Đăng nhập
           </button>
         </form>
       </motion.div>

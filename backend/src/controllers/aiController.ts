@@ -7,6 +7,11 @@ export const chatExtraction = asyncHandler(async (req: Request, res: Response) =
   res.json(result);
 });
 
+export const chatResponse = asyncHandler(async (req: Request, res: Response) => {
+  const result = await aiService.respondToChat(req.body);
+  res.json(result);
+});
+
 export const diagnosisPrediction = asyncHandler(async (req: Request, res: Response) => {
   const result = await aiService.predictSpecialty(req.body);
   res.json(result);

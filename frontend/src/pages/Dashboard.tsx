@@ -12,11 +12,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
-import { chatService, type ChatSession, type Message, getGeminiResponse } from '../services/chatService';
-import { useLanguage } from '../contexts/LanguageContext';
-
+import { chatStorageService, type ChatSession, type Message, askMedicalAI } from '../services/chatService';
 export default function Dashboard() {
-  const { t } = useLanguage();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,7 +23,7 @@ export default function Dashboard() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const history = chatService.getHistory();
+    const history = chatStorageService.getHistory();
     setSessions(history);
     if (history.length > 0) {
       handleSelectSession(history[0].id);
@@ -43,7 +40,7 @@ export default function Dashboard() {
     const newId = Date.now().toString();
     const newSession: ChatSession = {
       id: newId,
-      title: t('new_chat'),
+      title: 'Chat mới',
       timestamp: Date.now(),
       messages: []
     };
@@ -53,8 +50,8 @@ export default function Dashboard() {
   };
 
   const handleSelectSession = (id: string) => {
-    const history = chatService.getHistory();
-    const session = history.find(s => s.id === id);
+    const history = chatStorageService.getHistory();
+    const session = history.find((s) => s.id === id);
     if (session) {
       setCurrentSessionId(id);
       setMessages(session.messages);
@@ -63,8 +60,8 @@ export default function Dashboard() {
 
   const handleDeleteSession = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    chatService.deleteSession(id);
-    const updated = sessions.filter(s => s.id !== id);
+    chatStorageService.deleteSession(id);
+    const updated = sessions.filter((s) => s.id !== id);
     setSessions(updated);
     if (currentSessionId === id) {
       if (updated.length > 0) {
@@ -86,7 +83,7 @@ export default function Dashboard() {
     setInput('');
     setIsLoading(true);
 
-    const responseText = await getGeminiResponse(newMessages);
+    const responseText = await askMedicalAI(currentInput);
     const assistantMsg: Message = { role: 'model', content: responseText || 'Lỗi kết nối.' };
     
     const finalMessages = [...newMessages, assistantMsg];
@@ -94,18 +91,18 @@ export default function Dashboard() {
     setIsLoading(false);
 
     // Update session
-    const history = chatService.getHistory();
-    const sessionIdx = history.findIndex(s => s.id === currentSessionId);
+    const history = chatStorageService.getHistory();
+    const sessionIdx = history.findIndex((s) => s.id === currentSessionId);
     
     const updatedSession: ChatSession = {
       id: currentSessionId,
-      title: messages.length === 0 ? currentInput.slice(0, 30) + (currentInput.length > 30 ? '...' : '') : (history[sessionIdx]?.title || t('new_chat')),
+      title: messages.length === 0 ? currentInput.slice(0, 30) + (currentInput.length > 30 ? '...' : '') : (history[sessionIdx]?.title || 'Chat mới'),
       messages: finalMessages,
       timestamp: Date.now()
     };
     
-    chatService.saveSession(updatedSession);
-    setSessions(chatService.getHistory());
+    chatStorageService.saveSession(updatedSession);
+    setSessions(chatStorageService.getHistory());
   };
 
   return (
@@ -121,12 +118,12 @@ export default function Dashboard() {
               onClick={createNewSession}
               className="w-full flex items-center justify-center gap-2 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md active:scale-95"
             >
-              {t('new_chat')}
+              Chat mới
             </button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-          <div className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('recent')}</div>
+          <div className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Gần đây</div>
           {sessions.map(session => (
             <div 
               key={session.id}
@@ -177,8 +174,8 @@ export default function Dashboard() {
               <div className="w-24 h-24 bg-slate-50 text-slate-300 rounded-[2.5rem] flex items-center justify-center border border-slate-100 shadow-inner">
                  AI
               </div>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">{t('ai_assistant')}</h3>
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em]">{t('input_placeholder')}</p>
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">Trợ lý Mediflow</h3>
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em]">Nhập câu hỏi hoặc triệu chứng của bạn...</p>
             </div>
           ) : (
             <>
@@ -232,7 +229,7 @@ export default function Dashboard() {
           >
             <input 
               type="text"
-              placeholder={t('input_placeholder')}
+              placeholder="Nhập câu hỏi hoặc triệu chứng của bạn..."
               className="flex-1 px-4 py-3 bg-transparent outline-none text-sm text-slate-800"
               value={input}
               onChange={(e) => setInput(e.target.value)}

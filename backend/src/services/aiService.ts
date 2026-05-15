@@ -66,6 +66,12 @@ export class AiService {
     };
   }
 
+  public async respondToChat(input: { message: string; context?: string; userId?: string }): Promise<{ response: string }> {
+    return {
+      response: `Cảm ơn bạn đã gửi: "${input.message}". Đây là phản hồi mẫu từ hệ thống trợ lý AI. Phần mô hình AI thực tế sẽ được tích hợp sau.`,
+    };
+  }
+
   public async predictSpecialty(input: DiagnosisInput): Promise<DiagnosisResult> {
     return this.diagnosisModel.predict(input);
   }

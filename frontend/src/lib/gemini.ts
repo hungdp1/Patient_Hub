@@ -1,22 +1,23 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
 export async function askMedicalAI(prompt: string, context?: string) {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Bạn là trợ lý AI y tế thông minh tại bệnh viện Mediflow. 
-      Nhiệm vụ của bạn là giải thích các thuật ngữ y học một cách dễ hiểu và tư vấn quy trình bệnh viện.
-      Lưu ý: Luôn khuyên bệnh nhân hỏi ý kiến bác sĩ cho các chẩn đoán cụ thể.
-      
-      Ngữ cảnh lịch sử bệnh án (nếu có): ${context || 'Không có'}
-      
-      Câu hỏi của bệnh nhân: ${prompt}`,
+    const response = await fetch(`${API_BASE_URL}/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: prompt, context }),
     });
-    return response.text;
+
+    if (!response.ok) {
+      throw new Error('AI service unavailable');
+    }
+
+    const data = await response.json();
+    return data.response || 'Xin lỗi, tôi không thể trả lời lúc này.';
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Xin lỗi, tôi gặp sự cố khi kết nối. Vui lòng thử lại sau.";
+    console.error('AI Chat Error:', error);
+    return 'Xin lỗi, tôi gặp sự cố khi kết nối. Vui lòng thử lại sau.';
   }
 }

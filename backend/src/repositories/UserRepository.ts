@@ -1,16 +1,18 @@
 import prisma from '../lib/prismaClient';
-import { User, Patient } from '@prisma/client';
+import { User, Patient, UserRole } from '@prisma/client';
 
 export interface CreateUserData {
   email: string;
+  phoneNumber: string;
   passwordHash: string;
   firstName: string;
   lastName: string;
-  role?: string;
+  role: UserRole;
 }
 
 export interface IUserRepository {
   findByEmail(email: string): Promise<User | null>;
+  findByPhoneNumber(phoneNumber: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   createUser(data: CreateUserData): Promise<User>;
   createPatient(userId: string): Promise<Patient>;
@@ -22,6 +24,13 @@ export class UserRepository implements IUserRepository {
   public async findByEmail(email: string): Promise<User | null> {
     return prisma.user.findUnique({
       where: { email },
+      include: { patient: true, doctor: true },
+    });
+  }
+
+  public async findByPhoneNumber(phoneNumber: string): Promise<User | null> {
+    return prisma.user.findUnique({
+      where: { phoneNumber },
       include: { patient: true, doctor: true },
     });
   }

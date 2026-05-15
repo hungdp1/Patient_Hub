@@ -61,10 +61,8 @@ model User {
   technician        Technician?
   staff             Staff?
   appointments      Appointment[]
-  labResults        LabResult[]
   payments          Payment[]
-  medicalRecords    MedicalRecord[]
-  prescriptions     Prescription[]
+  creditCards       CreditCard[]
   notifications     Notification[]
   conversationSessions ConversationSession[]
   chatMessages      ChatMessage[]
@@ -224,7 +222,6 @@ model MedicalRecord {
   appointment       Appointment? @relation(fields: [appointmentId], references: [id])
   labResults        LabResult[]
   prescriptions     Prescription[]
-  user              User       @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "MedicalRecord_user_fkey")
 }
 
 // =============== LAB RESULTS ===============
@@ -261,7 +258,6 @@ model LabResult {
   doctor            Doctor     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   technician        Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
   medicalRecord     MedicalRecord? @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
-  user              User       @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 // =============== PRESCRIPTIONS ===============
@@ -295,7 +291,6 @@ model Prescription {
   patient           Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor            Doctor     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   medicalRecord     MedicalRecord? @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
-  user              User       @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 // =============== PAYMENTS ===============

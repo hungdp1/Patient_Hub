@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { User, Mail, Phone, Calendar, MapPin, ShieldCheck, Lock, ChevronRight, Save, HeartPulse, LogOut, Sparkles, Activity, CreditCard, X, Camera } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import type { CreditCardDetails } from '../types';
 
 export default function Profile() {
-  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'info' | 'security' | 'payment'>('info');
   const [successVisible, setSuccessVisible] = useState(false);
   const [userRole, setUserRole] = useState<string>('PATIENT');
@@ -92,7 +90,7 @@ export default function Profile() {
                 ? 'Hồ sơ KTV' 
                 : userRole === 'ADMIN'
                   ? 'Quản lý bệnh viện'
-                  : (t('profile_title') || 'Hồ sơ bệnh nhân')}
+                  : 'Hồ sơ bệnh nhân'}
           </h1>
           <p className="text-slate-500 mt-2">
             {userRole === 'DOCTOR' 
@@ -101,7 +99,7 @@ export default function Profile() {
                 ? 'Quản lý thông tin kỹ thuật viên và cài đặt bảo mật.'
                 : userRole === 'ADMIN'
                   ? 'Quản lý thông tin hệ thống và cấu hình bệnh viện.'
-                  : (t('profile_desc') || 'Quản lý thông tin cá nhân và cài đặt bảo mật.')}
+                  : 'Quản lý thông tin cá nhân và cài đặt bảo mật.'}
           </p>
         </div>
         
@@ -113,7 +111,7 @@ export default function Profile() {
               activeTab === 'info' ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"
             )}
           >
-            {userRole === 'DOCTOR' ? 'Chuyên môn' : (t('personal_info') || 'Thông tin')}
+            {userRole === 'DOCTOR' ? 'Chuyên môn' : 'Thông tin'}
           </button>
           <button 
             onClick={() => setActiveTab('security')}
@@ -122,7 +120,7 @@ export default function Profile() {
               activeTab === 'security' ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"
             )}
           >
-            {t('security') || 'Bảo mật'}
+            Bảo mật
           </button>
           {userRole === 'PATIENT' && (
             <button 
@@ -173,11 +171,11 @@ export default function Profile() {
                   {userRole !== 'DOCTOR' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-left">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('blood_type') || 'Nhóm máu'}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nhóm máu</p>
                         <p className="text-lg font-bold text-slate-800">{patientInfo.bloodType}</p>
                       </div>
                       <div className="text-left border-l border-slate-100 pl-4">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('gender') || 'Giới tính'}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Giới tính</p>
                         <p className="text-lg font-bold text-slate-800">{patientInfo.gender}</p>
                       </div>
                     </div>
@@ -189,11 +187,11 @@ export default function Profile() {
             {/* Right Column: Detailed Info Form */}
             <div className="md:col-span-2 space-y-6">
               <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-800 mb-8">{userRole === 'DOCTOR' ? 'Thông tin công tác' : (t('contact_details') || 'Chi tiết liên hệ')}</h2>
+                <h2 className="text-lg font-bold text-slate-800 mb-8">{userRole === 'DOCTOR' ? 'Thông tin công tác' : 'Chi tiết liên hệ'}</h2>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{t('full_name') || 'Họ và tên'}</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Họ và tên</label>
                     <div className="relative">
                       <User className="absolute left-4 top-3.5 text-slate-400" size={18} />
                       <input 
@@ -208,7 +206,7 @@ export default function Profile() {
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{userRole === 'DOCTOR' ? 'Tuổi' : (t('dob') || 'Ngày sinh')}</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{userRole === 'DOCTOR' ? 'Tuổi' : 'Ngày sinh'}</label>
                     <div className="relative">
                       {userRole === 'DOCTOR' ? <Activity className="absolute left-4 top-3.5 text-slate-400" size={18} /> : <Calendar className="absolute left-4 top-3.5 text-slate-400" size={18} />}
                       <input 
@@ -238,7 +236,7 @@ export default function Profile() {
                   )}
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{t('phone') || 'Số điện thoại'}</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Số điện thoại</label>
                     <div className="relative">
                       <Phone className="absolute left-4 top-3.5 text-slate-400" size={18} />
                       <input 
@@ -253,7 +251,7 @@ export default function Profile() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{t('email') || 'Email'}</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Email</label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-3.5 text-slate-400" size={18} />
                       <input 
@@ -268,7 +266,7 @@ export default function Profile() {
                   </div>
 
                   <div className="sm:col-span-2 space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{userRole === 'DOCTOR' ? 'Học vấn' : (t('address') || 'Địa chỉ')}</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{userRole === 'DOCTOR' ? 'Học vấn' : 'Địa chỉ'}</label>
                     <div className="relative">
                       {userRole === 'DOCTOR' ? <ShieldCheck className="absolute left-4 top-3.5 text-slate-400" size={18} /> : <MapPin className="absolute left-4 top-3.5 text-slate-400" size={18} />}
                       <input 
@@ -365,14 +363,14 @@ export default function Profile() {
                 <div className="mt-10 pt-6 border-t border-slate-50 flex items-center justify-between">
                   {successVisible ? (
                     <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm font-bold text-green-500">
-                      ✓ {t('save_success') || 'Cập nhật thành công!'}
+                      ✓ Cập nhật thành công!
                     </motion.p>
                   ) : <div />}
                   <button 
                     onClick={handleSave}
                     className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2"
                   >
-                    <Save size={18} /> {t('save_changes') || 'Lưu thay đổi'}
+                    <Save size={18} /> Lưu thay đổi
                   </button>
                 </div>
               </div>
@@ -392,14 +390,14 @@ export default function Profile() {
                   <Lock size={24} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">{t('change_password') || 'Đổi mật khẩu'}</h3>
-                  <p className="text-xs text-slate-500 mt-1">{t('password_desc') || 'Đảm bảo tài khoản của bạn được bảo mật bằng mật khẩu mạnh.'}</p>
+                  <h3 className="text-sm font-bold text-slate-800">Đổi mật khẩu</h3>
+                  <p className="text-xs text-slate-500 mt-1">Đảm bảo tài khoản của bạn được bảo mật bằng mật khẩu mạnh.</p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{t('current_password') || 'Mật khẩu hiện tại'}</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Mật khẩu hiện tại</label>
                   <input 
                     type="password" 
                     placeholder="••••••••"
@@ -408,7 +406,7 @@ export default function Profile() {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{t('new_password') || 'Mật khẩu mới'}</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Mật khẩu mới</label>
                   <input 
                     type="password" 
                     placeholder="••••••••"
@@ -417,7 +415,7 @@ export default function Profile() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">{t('confirm_password') || 'Xác nhận mật khẩu'}</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Xác nhận mật khẩu</label>
                   <input 
                     type="password" 
                     placeholder="••••••••"
@@ -429,14 +427,14 @@ export default function Profile() {
               <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
                 {successVisible ? (
                   <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm font-bold text-green-500">
-                    ✓ {t('password_success') || 'Mật khẩu đã được thay đổi!'}
+                    ✓ Mật khẩu đã được thay đổi!
                   </motion.p>
                 ) : <div />}
                 <button 
                   onClick={handleSave}
                   className="px-10 py-4 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg"
                 >
-                  {t('update_password') || 'Cập nhật mật khẩu'}
+                  Cập nhật mật khẩu
                 </button>
               </div>
             </div>
@@ -447,11 +445,11 @@ export default function Profile() {
                     <LogOut size={20} />
                  </div>
                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">{t('sessions') || 'Phiên đăng nhập'}</h4>
-                    <p className="text-xs text-slate-500 mt-1">{t('sessions_desc') || 'Đăng xuất khỏi tất cả các thiết bị khác.'}</p>
+                    <h4 className="text-sm font-bold text-slate-800">Phiên đăng nhập</h4>
+                    <p className="text-xs text-slate-500 mt-1">Đăng xuất khỏi tất cả các thiết bị khác.</p>
                  </div>
                </div>
-               <button className="text-xs font-bold text-red-600 hover:underline">{t('logout_all') || 'Đăng xuất tất cả'}</button>
+               <button className="text-xs font-bold text-red-600 hover:underline">Đăng xuất tất cả</button>
             </div>
           </motion.div>
         ) : (

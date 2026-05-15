@@ -3,6 +3,7 @@ import { ApiError } from '../utils/errorHandler';
 import { hashPassword, comparePassword } from '../utils/password';
 import { IUserRepository, userRepository, CreateUserData } from '../repositories/UserRepository';
 import { IAuditRepository, auditRepository } from '../repositories/AuditRepository';
+import { UserRole } from '@prisma/client';
 
 export interface AuthResult {
   token: string;
@@ -16,13 +17,14 @@ export interface AuthResult {
 }
 
 export interface IAuthService {
-  login(email: string, password: string): Promise<AuthResult>;
+  login(input: { email?: string; phoneNumber?: string; password: string }): Promise<AuthResult>;
   register(input: {
-    email: string;
+    email?: string;
+    phoneNumber: string;
     password: string;
     firstName: string;
     lastName: string;
-    role?: string;
+    role?: UserRole;
   }): Promise<AuthResult>;
 }
 
@@ -38,19 +40,32 @@ export class AuthService implements IAuthService {
       throw new ApiError(500, 'JWT secret is not configured');
     }
 
-    return jwt.sign(payload, secret, {
+    return jwt.sign(payload, secret as jwt.Secret, {
       expiresIn: process.env.JWT_EXPIRATION || '7d',
-    });
+    } as jwt.SignOptions);
   }
 
-  public async login(email: string, password: string): Promise<AuthResult> {
-    const user = await this.userRepository.findByEmail(email);
+  private async findUserByIdentifier(input: { email?: string; phoneNumber?: string }) {
+    if (input.email) {
+      const user = await this.userRepository.findByEmail(input.email);
+      if (user) return user;
+    }
+
+    if (input.phoneNumber) {
+      return this.userRepository.findByPhoneNumber(input.phoneNumber);
+    }
+
+    return null;
+  }
+
+  public async login(input: { email?: string; phoneNumber?: string; password: string }): Promise<AuthResult> {
+    const user = await this.findUserByIdentifier({ email: input.email, phoneNumber: input.phoneNumber });
 
     if (!user || !user.passwordHash) {
       throw new ApiError(401, 'Invalid credentials');
     }
 
-    const isValid = await comparePassword(password, user.passwordHash);
+    const isValid = await comparePassword(input.password, user.passwordHash);
     if (!isValid) {
       throw new ApiError(401, 'Invalid credentials');
     }
@@ -78,28 +93,36 @@ export class AuthService implements IAuthService {
   }
 
   public async register(input: {
-    email: string;
+    email?: string;
+    phoneNumber: string;
     password: string;
     firstName: string;
     lastName: string;
-    role?: string;
+    role?: UserRole;
   }): Promise<AuthResult> {
-    const existing = await this.userRepository.findByEmail(input.email);
-    if (existing) {
+    const email = input.email?.trim() || `${input.phoneNumber.replace(/\D/g, '')}@patienthub.local`;
+    const existingByEmail = await this.userRepository.findByEmail(email);
+    if (existingByEmail) {
       throw new ApiError(400, 'Email already exists');
+    }
+
+    const existingByPhone = await this.userRepository.findByPhoneNumber(input.phoneNumber);
+    if (existingByPhone) {
+      throw new ApiError(400, 'Phone number already registered');
     }
 
     const passwordHash = await hashPassword(input.password);
     const userData: CreateUserData = {
-      email: input.email,
+      email,
+      phoneNumber: input.phoneNumber,
       passwordHash,
       firstName: input.firstName,
       lastName: input.lastName,
-      role: input.role || 'PATIENT',
+      role: (input.role as UserRole) || UserRole.PATIENT,
     };
 
     const user = await this.userRepository.createUser(userData);
-    if (user.role === 'PATIENT') {
+    if (user.role === UserRole.PATIENT) {
       await this.userRepository.createPatient(user.id);
     }
 
