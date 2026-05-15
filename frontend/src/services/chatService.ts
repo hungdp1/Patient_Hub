@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from '@google/genai';
 
 export interface Message {
   role: 'user' | 'model';
@@ -14,7 +14,7 @@ export interface ChatSession {
 
 const STORAGE_KEY = 'mediflow_chat_history';
 
-export const chatService = {
+export const chatStorageService = {
   getHistory(): ChatSession[] {
     const data = localStorage.getItem(STORAGE_KEY);
     return data ? JSON.parse(data) : [];
@@ -22,34 +22,34 @@ export const chatService = {
 
   saveSession(session: ChatSession) {
     const history = this.getHistory();
-    const index = history.findIndex(s => s.id === session.id);
+    const index = history.findIndex((s) => s.id === session.id);
     if (index >= 0) {
       history[index] = session;
     } else {
       history.unshift(session);
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 50))); // Keep last 50
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 50)));
   },
 
   deleteSession(id: string) {
-    const history = this.getHistory().filter(s => s.id !== id);
+    const history = this.getHistory().filter((s) => s.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-  }
+  },
 };
 
-export const getGeminiResponse = async (messages: Message[]) => {
-  const ai = new GoogleGenAI({ apiKey: (process.env.GEMINI_API_KEY as string) });
-  
-  // Format for Gemini SDK: contents: [{ role: 'user', parts: [{ text: '...' }] }]
-  const contents = messages.map(m => ({
-    role: m.role,
-    parts: [{ text: m.content }]
-  }));
+export async function askMedicalAI(message: string): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+  const contents = [
+    {
+      role: 'user',
+      parts: [{ text: message }],
+    },
+  ];
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: contents,
+      model: 'gemini-3-flash-preview',
+      contents,
       config: {
         systemInstruction: `Bạn là Trợ lý Y tế AI chuyên sâu của ứng dụng Mediflow. 
         Bạn có 3 năng lực chính:
@@ -59,12 +59,12 @@ export const getGeminiResponse = async (messages: Message[]) => {
 
         Hãy trả lời bằng ngôn ngữ mà người dùng đang sử dụng (Việt hoặc Nhật). 
         Phong cách: Chuyên nghiệp, thấu hiểu, ngắn gọn và hữu ích.`,
-      }
+      },
     });
 
     return response.text;
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Xin lỗi, tôi đã gặp sự cố khi kết nối. Vui lòng thử lại sau.";
+    console.error('Gemini Error:', error);
+    return 'Xin lỗi, tôi đã gặp sự cố khi kết nối. Vui lòng thử lại sau.';
   }
-};
+}

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/errorHandler';
 import { dataService } from '../services/DataService';
@@ -52,7 +52,7 @@ export const updateAppointment = asyncHandler(async (req: AuthRequest, res: Resp
 // ============ LAB RESULTS ============
 export const getLabResults = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { patientId } = req.query as { patientId?: string };
-  const results = await dataService.getLabResults(req.userId!, patientId);
+  const results = await dataService.getLabResults(patientId);
   res.json(results);
 });
 
@@ -71,7 +71,7 @@ export const updateLabResult = asyncHandler(async (req: AuthRequest, res: Respon
 // ============ MEDICAL RECORDS ============
 export const getMedicalRecords = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { patientId } = req.query as { patientId?: string };
-  const records = await dataService.getMedicalRecords(req.userId!, patientId);
+  const records = await dataService.getMedicalRecords(patientId);
   res.json(records);
 });
 
@@ -90,7 +90,7 @@ export const updateMedicalRecord = asyncHandler(async (req: AuthRequest, res: Re
 // ============ PRESCRIPTIONS ============
 export const getPrescriptions = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { patientId } = req.query as { patientId?: string };
-  const prescriptions = await dataService.getPrescriptions(req.userId!, patientId);
+  const prescriptions = await dataService.getPrescriptions(patientId);
   res.json(prescriptions);
 });
 

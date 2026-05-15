@@ -10,7 +10,6 @@ import {
   Info,
   Calendar
 } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
@@ -25,15 +24,14 @@ interface HospitalService {
 }
 
 export default function HospitalServices() {
-  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'clinic' | 'lab' | 'imaging'>('all');
 
   const categories = [
-    { id: 'all', label: t('all_services') || 'Tất cả' },
-    { id: 'clinic', label: t('clinic_sv') || 'Khám lâm sàng' },
-    { id: 'lab', label: t('lab_sv') || 'Xét nghiệm' },
-    { id: 'imaging', label: t('imaging_sv') || 'Chẩn đoán hình ảnh' },
+    { id: 'all', label: 'Tất cả' },
+    { id: 'clinic', label: 'Khám lâm sàng' },
+    { id: 'lab', label: 'Xét nghiệm' },
+    { id: 'imaging', label: 'Chẩn đoán hình ảnh' },
   ];
 
   const services: HospitalService[] = [
@@ -104,15 +102,15 @@ export default function HospitalServices() {
     <div className="space-y-8 max-w-6xl mx-auto pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">{t('services_title') || 'Dịch vụ bệnh viện'}</h1>
-          <p className="text-slate-500 mt-2">{t('services_desc') || 'Danh mục các dịch vụ khám chữa bệnh và bảng giá tham khảo.'}</p>
+          <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Dịch vụ bệnh viện</h1>
+          <p className="text-slate-500 mt-2">Danh mục các dịch vụ khám chữa bệnh và bảng giá tham khảo.</p>
         </div>
         
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
           <input 
             type="text" 
-            placeholder={t('search_services') || 'Tìm dịch vụ...'}
+            placeholder="Tìm dịch vụ..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm"

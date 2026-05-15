@@ -1,7 +1,7 @@
 import express from 'express';
-import authRoutes from './routes/authRoutes';
-import userRoutes from './routes/userRoutes';
-import dataRoutes from './routes/dataRoutes';
+import authRoutes from './authRoutes';
+import userRoutes from './userRoutes';
+import dataRoutes from './dataRoutes';
 
 const app = express();
 
