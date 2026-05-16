@@ -4,14 +4,29 @@ const API_BASE_URL = 'http://localhost:5000/api';
 
 export interface UserProfile {
   id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
   phoneNumber: string;
-  fullName: string;
   dateOfBirth: string;
-  gender: 'male' | 'female' | 'other';
+  gender: string;
   address: string;
-  emergencyContact: string;
-  createdAt: string;
-  updatedAt: string;
+  city: string;
+  country: string;
+  role: string;
+  patient?: {
+    id: string;
+    bloodType: string;
+    allergies: string;
+    chronicDiseases: string;
+  };
+  doctor?: {
+    id: string;
+    specialization: string;
+    education: string;
+    experience: string;
+    achievements: string;
+  };
 }
 
 export interface DashboardData {

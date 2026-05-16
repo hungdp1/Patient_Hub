@@ -48,6 +48,12 @@ export interface IDataService {
   createPayment(userId: string, data: CreatePaymentDto): Promise<unknown>;
   getNotifications(userId: string): Promise<unknown[]>;
   markNotificationAsRead(id: string): Promise<unknown>;
+  getAdminUsers(): Promise<unknown[]>;
+  getAdminShifts(): Promise<unknown[]>;
+  getAdminHistory(): Promise<unknown[]>;
+  getArticles(): Promise<unknown[]>;
+  getPendingInvoices(): Promise<unknown[]>;
+  getPatientDashboard(userId: string): Promise<unknown>;
 }
 
 export class DataService implements IDataService {
@@ -393,6 +399,42 @@ export class DataService implements IDataService {
 
   public async markNotificationAsRead(id: string): Promise<unknown> {
     return notificationRepository.markAsRead(id);
+  }
+
+  public async getAdminUsers(): Promise<unknown[]> {
+    const { userRepository } = await import('../repositories/UserRepository');
+    return userRepository.findManyAll();
+  }
+
+  public async getAdminShifts(): Promise<unknown[]> {
+    return appointmentRepository.findAll();
+  }
+
+  public async getAdminHistory(): Promise<unknown[]> {
+    return auditRepository.findAll();
+  }
+
+  public async getArticles(): Promise<unknown[]> {
+    const diseases = await libraryRepository.findDiseases() as any[];
+    const drugs = await libraryRepository.findDrugs() as any[];
+    const procedures = await libraryRepository.findProcedures() as any[];
+    const labTests = await libraryRepository.findLabTests() as any[];
+    
+    return [
+      ...diseases.map(d => ({ ...d, category: 'DISEASE' })),
+      ...drugs.map(d => ({ ...d, category: 'MEDICINE' })),
+      ...procedures.map(d => ({ ...d, category: 'PROCEDURE' })),
+      ...labTests.map(d => ({ ...d, category: 'TEST' })),
+    ];
+  }
+
+  public async getPendingInvoices(): Promise<unknown[]> {
+    return paymentRepository.findPendingInvoices();
+  }
+
+  public async getPatientDashboard(userId: string): Promise<unknown> {
+    const { userRepository } = await import('../repositories/UserRepository');
+    return userRepository.getPatientDashboard(userId);
   }
 }
 

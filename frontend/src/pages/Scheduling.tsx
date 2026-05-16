@@ -1,36 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Sparkles, 
-  Clock, 
-  MapPin, 
-  CheckCircle2, 
-  Timer,
-  Navigation,
-  ArrowRightLeft,
-  Activity,
-  User as UserIcon,
-  Calendar,
-  Stethoscope,
-  MessageSquare,
-  Send,
-  ChevronRight,
-  X,
-  CalendarDays,
-  AlertCircle,
-  Undo2,
-  Check,
-  Ban,
-  FileText,
-  Search,
-  ClipboardList,
-  FlaskConical,
-  User
+  Calendar, Clock, MapPin, Search, Plus, Filter, FileText, Activity, 
+  Stethoscope, User as UserIcon, AlertCircle, Phone, Mail, FileCheck, 
+  Trash2, X, ChevronRight, Pill, Syringe, Save, Printer, History, CheckCircle, PenTool, Edit3, Heart, Thermometer, ShieldAlert, BadgeInfo, Building2,
+  List, ChevronDown, User, FileDigit, Clock4, FileOutput, ShieldCheck, Check, Sparkles, Undo2, ClipboardList, Ban, MessageSquare, CalendarDays, Send, CheckCircle2, Timer
 } from 'lucide-react';
-import { MOCK_EXAMS, MOCK_RECORDS } from '../constants';
-import { ExamStatus, type MedicalExam, UserRole, MedicalRecord } from '../types';
+import { dataService } from '../services/dataService';
+import { userService } from '../services/userService';
 import { cn } from '../lib/utils';
-
+import { UserRole, ExamStatus, type MedicalRecord } from '../types';
 interface Appointment {
   id: string;
   patientName: string;
@@ -42,8 +21,8 @@ interface Appointment {
 }
 
 export default function Scheduling() {
-  const [userRole, setUserRole] = useState<UserRole>(UserRole.PATIENT);
-  const [exams] = useState<MedicalExam[]>(MOCK_EXAMS);
+  const [userRole, setUserRole] = useState<UserRole>(UserRole.PATIENT as any);
+  const [exams, setExams] = useState<any[]>([]);
   const [hasAppointment, setHasAppointment] = useState(false);
   const [bookingStep, setBookingStep] = useState(0); // 0: department search
   const [showModal, setShowModal] = useState(false);
@@ -56,11 +35,7 @@ export default function Scheduling() {
 
   // Doctor state
   const [notifyPatient, setNotifyPatient] = useState(true);
-  const [appointments, setAppointments] = useState<Appointment[]>([
-    { id: '1', patientName: 'Nguyễn Văn A', time: '08:00', date: new Date().toLocaleDateString('vi-VN'), status: 'PENDING', dept: 'Nội tổng quát' },
-    { id: '2', patientName: 'Trần Thị B', time: '09:30', date: new Date().toLocaleDateString('vi-VN'), status: 'ACCEPTED', dept: 'Nội tổng quát' },
-    { id: '3', patientName: 'Lê Văn C', time: '10:15', date: new Date().toLocaleDateString('vi-VN'), status: 'PENDING', dept: 'Nội tổng quát' },
-  ]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [viewingRecord, setViewingRecord] = useState<MedicalRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -112,8 +87,32 @@ export default function Scheduling() {
 
 
   useEffect(() => {
-    const role = localStorage.getItem('userRole') as UserRole;
+    const role = localStorage.getItem('userRole') as any;
     if (role) setUserRole(role);
+
+    const fetchAppointments = async () => {
+      try {
+        const data = await dataService.getAppointments();
+        const mapped = data.map((app: any) => {
+           const d = new Date(app.appointmentDate || app.createdAt);
+           return {
+              id: app.id,
+              patientName: 'Bệnh nhân ' + app.patientId.substring(0, 4),
+              time: app.appointmentTime || d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+              date: d.toLocaleDateString('vi-VN'),
+              status: app.status === 'confirmed' ? 'ACCEPTED' : app.status === 'cancelled' ? 'DECLINED' : 'PENDING',
+              dept: app.department || app.notes || 'Nội tổng quát',
+           };
+        });
+        setAppointments(mapped);
+        
+        const labData = await dataService.getLabResults();
+        setExams(labData);
+      } catch (error) {
+        console.error('Failed to fetch appointments:', error);
+      }
+    };
+    fetchAppointments();
   }, []);
 
   const doctorInfo = {
@@ -165,23 +164,51 @@ export default function Scheduling() {
     return sorted[0];
   }, [exams, hasAppointment]);
 
-  const handleBooking = () => {
-    const newAppointment = {
-      id: Math.random().toString(),
-      patientName: 'Nguyễn Văn A',
-      time: bookingData.time,
-      date: bookingData.date,
-      status: 'PENDING',
-      dept: bookingData.dept
-    };
-    setAppointments(prev => [newAppointment, ...prev]);
-    setHasAppointment(true);
-    setShowModal(false);
-    setBookingStep(0);
+  const handleBooking = async () => {
+    try {
+      const dateTime = new Date();
+      const [day, month, year] = bookingData.date.split('/');
+      const [hour, min] = bookingData.time.split(':');
+      if (day && month && year) {
+        dateTime.setFullYear(Number(year), Number(month) - 1, Number(day));
+      }
+      if (hour && min) {
+        dateTime.setHours(Number(hour), Number(min), 0, 0);
+      }
+
+      const newApp = await dataService.createAppointment({
+        patientId: 'patient-me',
+        doctorId: 'doctor-1',
+        date: dateTime.toISOString(),
+        status: 'PENDING',
+        reason: bookingData.dept,
+        consultationType: 'IN_PERSON'
+      });
+      setAppointments(prev => [{
+        id: newApp.id,
+        patientName: 'Tôi',
+        time: bookingData.time,
+        date: bookingData.date,
+        status: 'PENDING',
+        dept: bookingData.dept
+      }, ...prev]);
+      setHasAppointment(true);
+      setShowModal(false);
+      setBookingStep(0);
+    } catch(err) {
+      console.error(err);
+      alert('Đặt lịch thất bại');
+    }
   };
 
-  const handleCancelAppointment = () => {
+  const handleCancelAppointment = async () => {
     if (window.confirm('Bạn có chắc chắn muốn hủy lịch hẹn này không?')) {
+      const myApp = appointments.find(a => a.patientName === 'Tôi');
+      if (myApp) {
+         try {
+           await dataService.updateAppointment(myApp.id, { status: 'CANCELLED' });
+         } catch(err) { console.error(err); }
+      }
       setHasAppointment(false);
       setBookingData({ dept: '', date: new Date().toLocaleDateString('vi-VN'), time: '' });
       setBookingStep(0);
@@ -194,31 +221,45 @@ export default function Scheduling() {
     setShowModal(true);
   };
 
-  const handleAcceptAppointment = (id: string) => {
-    setAppointments(prev => prev.map(app => app.id === id ? { ...app, status: 'ACCEPTED' } : app));
-  };
-
-  const handleDeclineAppointment = (id: string) => {
-    if (cancelReason) {
-      setAppointments(prev => prev.map(app => app.id === id ? { ...app, status: 'DECLINED', cancelReason } : app));
-      setCancellingAppId(null);
-      setCancelReason('');
+  const handleAcceptAppointment = async (id: string) => {
+    try {
+      await dataService.updateAppointment(id, { status: 'CONFIRMED' });
+      setAppointments(prev => prev.map(app => app.id === id ? { ...app, status: 'ACCEPTED' } : app));
+    } catch (err) {
+       console.error(err);
     }
   };
 
-  const handleRecordSearch = (e: React.FormEvent) => {
+  const handleDeclineAppointment = async (id: string) => {
+    if (cancelReason) {
+      try {
+        await dataService.updateAppointment(id, { status: 'CANCELLED' });
+        setAppointments(prev => prev.map(app => app.id === id ? { ...app, status: 'DECLINED', cancelReason } : app));
+        setCancellingAppId(null);
+        setCancelReason('');
+      } catch (err) {
+         console.error(err);
+      }
+    }
+  };
+
+  const handleRecordSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
     
     setIsSearching(true);
-    setTimeout(() => {
-      const record = MOCK_RECORDS.find(r => 
+    try {
+      const records = await dataService.getMedicalRecords() as any[];
+      const record = records.find(r => 
         r.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        'Nguyễn Văn A'.toLowerCase().includes(searchTerm.toLowerCase())
+        r.patientId.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setViewingRecord(record || null);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsSearching(false);
-    }, 800);
+    }
   };
 
   if (userRole === UserRole.DOCTOR || userRole === UserRole.ADMIN) {
@@ -492,13 +533,17 @@ export default function Scheduling() {
 
                         <div className="flex gap-2 pt-2">
                           <button 
-                            onClick={() => {
+                            onClick={async () => {
                               setIsSearching(true);
-                              setTimeout(() => {
-                                const record = MOCK_RECORDS.find(r => r.patientName === app.patientName) || MOCK_RECORDS[0];
-                                setViewingRecord(record);
+                              try {
+                                const records = await dataService.getMedicalRecords();
+                                const record = records.find((r: any) => r.patientName === app.patientName) || records[0];
+                                setViewingRecord(record as any);
+                              } catch (e) {
+                                console.error(e);
+                              } finally {
                                 setIsSearching(false);
-                              }, 600);
+                              }
                             }}
                             className="flex-1 py-3.5 bg-slate-50 text-slate-600 rounded-2xl text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-100 transition-all border border-slate-100 group-hover:border-slate-300 shadow-sm"
                           >

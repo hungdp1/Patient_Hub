@@ -27,6 +27,36 @@ import {
   validateCreatePayment,
 } from '../utils/validation';
 
+export const getAdminUsers = asyncHandler(async (_req, res: Response) => {
+  const users = await dataService.getAdminUsers();
+  res.json(users);
+});
+
+export const getAdminShifts = asyncHandler(async (_req, res: Response) => {
+  const shifts = await dataService.getAdminShifts();
+  res.json(shifts);
+});
+
+export const getAdminHistory = asyncHandler(async (_req, res: Response) => {
+  const history = await dataService.getAdminHistory();
+  res.json(history);
+});
+
+export const getArticles = asyncHandler(async (_req, res: Response) => {
+  const articles = await dataService.getArticles();
+  res.json(articles);
+});
+
+export const getPendingInvoices = asyncHandler(async (_req, res: Response) => {
+  const invoices = await dataService.getPendingInvoices();
+  res.json(invoices);
+});
+
+export const getPatientDashboard = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const dashboard = await dataService.getPatientDashboard(req.userId!);
+  res.json(dashboard);
+});
+
 
 
 

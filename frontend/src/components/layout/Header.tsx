@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Bell, Clock, CreditCard, CalendarClock } from 'lucide-react';
+import { Bell, Clock, CreditCard, CalendarClock, Globe } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface HeaderProps {

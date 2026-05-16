@@ -5,6 +5,7 @@ export interface IAppointmentRepository {
   create(data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appointment>;
   findMany(filter: { patientId?: string; userId?: string }): Promise<Appointment[]>;
   update(id: string, data: Partial<Appointment>): Promise<Appointment>;
+  findAll(): Promise<Appointment[]>;
 }
 
 export class AppointmentRepository implements IAppointmentRepository {
@@ -27,6 +28,16 @@ export class AppointmentRepository implements IAppointmentRepository {
 
   public async update(id: string, data: Partial<Appointment>): Promise<Appointment> {
     return prisma.appointment.update({ where: { id }, data });
+  }
+
+  public async findAll(): Promise<Appointment[]> {
+    return prisma.appointment.findMany({
+      include: {
+        patient: true,
+        doctor: { include: { user: true } },
+      },
+      orderBy: { date: 'desc' },
+    });
   }
 }
 

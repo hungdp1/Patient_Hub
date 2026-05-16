@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
+import { dataService } from '../services/dataService';
 
 interface HospitalService {
   id: string;
@@ -34,62 +35,28 @@ export default function HospitalServices() {
     { id: 'imaging', label: 'Chẩn đoán hình ảnh' },
   ];
 
-  const services: HospitalService[] = [
-    {
-      id: 'S1',
-      name: 'Khám tổng quát',
-      category: 'clinic',
-      price: '500,000 VND',
-      duration: '30-45 phút',
-      description: 'Khám lâm sàng tổng quát, kiểm tra các chỉ số sức khỏe cơ bản.',
-      icon: Stethoscope
-    },
-    {
-      id: 'S2',
-      name: 'Xét nghiệm máu tổng quát',
-      category: 'lab',
-      price: '350,000 VND',
-      duration: '15 phút',
-      description: 'Kiểm tra đường huyết, mỡ máu, chức năng gan thận.',
-      icon: Activity
-    },
-    {
-      id: 'S3',
-      name: 'Chụp X-Quang phổi',
-      category: 'imaging',
-      price: '250,000 VND',
-      duration: '10 phút',
-      description: 'Chụp X-quang kỹ thuật số kiểm tra các vấn đề về hô hấp.',
-      icon: Settings
-    },
-    {
-      id: 'S4',
-      name: 'Siêu âm bụng tổng quát',
-      category: 'imaging',
-      price: '400,000 VND',
-      duration: '20 phút',
-      description: 'Kiểm tra gan, mật, tụy, lách, thận, bàng quang.',
-      icon: Activity
-    },
-    {
-      id: 'S5',
-      name: 'Khám chuyên khoa Nội',
-      category: 'clinic',
-      price: '300,000 VND',
-      duration: '20 phút',
-      description: 'Tư vấn và điều trị các bệnh lý nội khoa chuyên sâu.',
-      icon: Stethoscope
-    },
-    {
-      id: 'S6',
-      name: 'Xét nghiệm đường huyết',
-      category: 'lab',
-      price: '80,000 VND',
-      duration: '5 phút',
-      description: 'Kiểm tra nồng độ Glucose trong máu nhanh chóng.',
-      icon: Activity
-    },
-  ];
+  const [services, setServices] = useState<HospitalService[]>([]);
+
+  React.useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const data = await dataService.getServices();
+        const mapped = data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category ? (s.category.toLowerCase().includes('lab') ? 'lab' : s.category.toLowerCase().includes('clinic') ? 'clinic' : 'imaging') : 'clinic',
+          price: (s.price || 0).toLocaleString('vi-VN') + ' VND',
+          duration: s.duration + ' phút',
+          description: s.description || '',
+          icon: s.category?.toLowerCase().includes('lab') ? Activity : s.category?.toLowerCase().includes('imaging') ? Settings : Stethoscope
+        }));
+        setServices(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchServices();
+  }, []);
 
   const filteredServices = services.filter(service => {
     const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) || 

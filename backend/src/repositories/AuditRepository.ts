@@ -14,6 +14,7 @@ export interface IAuditRepository {
     ipAddress?: string;
     userAgent?: string;
   }): Promise<AuditLog>;
+  findAll(): Promise<AuditLog[]>;
 }
 
 export class AuditRepository implements IAuditRepository {
@@ -30,6 +31,13 @@ export class AuditRepository implements IAuditRepository {
     userAgent?: string;
   }): Promise<AuditLog> {
     return prisma.auditLog.create({ data: log });
+  }
+
+  public async findAll(): Promise<AuditLog[]> {
+    return prisma.auditLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 100, // Limit to recent 100 for admin
+    });
   }
 }
 

@@ -18,6 +18,7 @@ export interface IUserRepository {
   createPatient(userId: string): Promise<Patient>;
   updateUser(id: string, data: Partial<User>): Promise<User>;
   getPatientDashboard(userId: string): Promise<Patient | null>;
+  findManyAll(): Promise<User[]>;
 }
 
 export class UserRepository implements IUserRepository {
@@ -70,6 +71,13 @@ export class UserRepository implements IUserRepository {
           where: { isActive: true },
         },
       },
+    });
+  }
+
+  public async findManyAll(): Promise<User[]> {
+    return prisma.user.findMany({
+      include: { patient: true, doctor: true, technician: true, staff: true },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }
