@@ -115,7 +115,7 @@ export interface PaymentHistoryItem {
   totalAmount: number;
   method: PaymentMethodType;
   items: PaymentItem[];
-  status: 'SUCCESS' | 'FAILED';
+  status: 'SUCCESS' | 'FAILED' | 'PENDING';
 }
 
 export interface LibraryItem {

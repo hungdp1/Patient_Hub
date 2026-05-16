@@ -18,54 +18,31 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { UserRole, type LibraryItem } from '../types';
+import { dataService } from '../services/dataService';
 
-const MOCK_LIBRARY: LibraryItem[] = [
-  {
-    id: '1',
-    category: 'DISEASE',
-    title: 'Viêm dạ dày cấp tính',
-    description: 'Tình trạng sưng viêm niêm mạc dạ dày một cách đột ngột.',
-    content: 'Viêm dạ dày cấp tính là tình trạng niêm mạc dạ dày bị sưng, viêm đột ngột, gây ra những cơn đau vùng thượng vị dữ dội. Nguyên nhân thường do lạm dụng rượu bia, thuốc giảm đau không steroid (NSAID), hoặc nhiễm khuẩn HP.',
-  },
-  {
-    id: '2',
-    category: 'TEST',
-    title: 'Xét nghiệm máu tổng quát',
-    description: 'Phân tích các thành phần trong máu để đánh giá sức khỏe.',
-    content: 'Xét nghiệm máu tổng quát (CBC) giúp bác sĩ nắm bắt các chỉ số về hồng cầu, bạch cầu và tiểu cầu. Đây là xét nghiệm cơ bản nhất để phát hiện sớm các tình trạng như thiếu máu, nhiễm trùng hay các bệnh lý về máu.',
-  },
-  {
-    id: '3',
-    category: 'MEDICINE',
-    title: 'Paracetamol (Acetaminophen)',
-    description: 'Thuốc giảm đau và hạ sốt phổ biến nhất.',
-    content: 'Paracetamol được sử dụng để điều trị các triệu chứng đau đầu, đau cơ, viêm khớp, đau lưng, đau răng, cảm lạnh và hạ sốt. Thuốc ít gây kích ứng dạ dày hơn các loại thuốc giảm đau khác nhưng cần thận trọng với người bệnh gan.',
-  },
-  {
-    id: '4',
-    category: 'DISEASE',
-    title: 'Cao huyết áp',
-    description: 'Tình trạng áp lực máu lên thành động mạch quá cao.',
-    content: 'Cao huyết áp được mệnh danh là "kẻ giết người thầm lặng". Nếu không được kiểm soát, nó có thể dẫn đến đột quỵ, nhồi máu cơ tim và suy thận. Việc duy trì lối sống lành mạnh và kiểm tra huyết áp định kỳ là vô cùng quan trọng.',
-  },
-  {
-    id: '5',
-    category: 'MEDICINE',
-    title: 'Amoxicillin',
-    description: 'Kháng sinh thuộc nhóm Penicillin.',
-    content: 'Amoxicillin là thuốc kháng sinh dùng để điều trị các bệnh nhiễm khuẩn phổ biến như viêm họng, viêm tai giữa, viêm xoang. Lưu ý chỉ sử dụng theo chỉ định của bác sĩ và không dùng cho các bệnh do virus.',
-  },
-  {
-    id: '6',
-    category: 'PROCEDURE',
-    title: 'Nội soi dạ dày',
-    description: 'Quy trình quan sát bên trong dạ dày qua ống mềm.',
-    content: 'Nội soi dạ dày là phương pháp đưa một ống soi mềm qua đường miệng để kiểm tra trực tiếp thực quản, dạ dày và tá tràng. Đây là "tiêu chuẩn vàng" để chẩn đoán các bệnh lý tiêu hóa.',
-  }
-];
+
 
 export default function MedicalLibrary() {
-  const [items, setItems] = useState<LibraryItem[]>(MOCK_LIBRARY);
+  const [items, setItems] = useState<LibraryItem[]>([]);
+
+  React.useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const data = await dataService.getArticles();
+        const mapped = data.map((a: any) => ({
+          id: a.id,
+          category: a.category ? (a.category.toUpperCase() === 'DISEASE' || a.category.toUpperCase() === 'TEST' || a.category.toUpperCase() === 'MEDICINE' || a.category.toUpperCase() === 'PROCEDURE' ? a.category.toUpperCase() : 'DISEASE') : 'DISEASE',
+          title: a.title,
+          description: a.description || (a.content ? a.content.substring(0, 100) + '...' : ''),
+          content: a.content || ''
+        }));
+        setItems(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchArticles();
+  }, []);
   const [activeCategory, setActiveCategory] = useState<'ALL' | 'DISEASE' | 'TEST' | 'MEDICINE' | 'PROCEDURE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingItem, setViewingItem] = useState<LibraryItem | null>(null);
@@ -82,28 +59,39 @@ export default function MedicalLibrary() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editForm.title && editForm.category && editForm.content) {
-      if (editForm.id) {
-        setItems(prev => prev.map(item => item.id === editForm.id ? { ...item, ...editForm } as LibraryItem : item));
-      } else {
-        const newItem: LibraryItem = {
-          ...editForm as LibraryItem,
-          id: Math.random().toString(36).substr(2, 9),
-        };
-        setItems(prev => [newItem, ...prev]);
+      try {
+        if (editForm.id) {
+          // await dataService.updateArticle(editForm.id, editForm);
+          setItems(prev => prev.map(item => item.id === editForm.id ? { ...item, ...editForm } as LibraryItem : item));
+        } else {
+          // const newArt = await dataService.createArticle(editForm);
+          const newItem: LibraryItem = {
+            ...editForm as LibraryItem,
+            id: Math.random().toString(36).substr(2, 9),
+          };
+          setItems(prev => [newItem, ...prev]);
+        }
+        setIsEditing(false);
+        setEditForm({});
+        setViewingItem(null);
+      } catch (err) {
+        console.error(err);
       }
-      setIsEditing(false);
-      setEditForm({});
-      setViewingItem(null);
     }
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Bạn có chắc muốn xóa bài viết này?')) {
-      setItems(prev => prev.filter(item => item.id !== id));
-      if (viewingItem?.id === id) setViewingItem(null);
+      try {
+        // await dataService.deleteArticle(id);
+        setItems(prev => prev.filter(item => item.id !== id));
+        if (viewingItem?.id === id) setViewingItem(null);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 

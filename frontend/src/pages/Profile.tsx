@@ -3,47 +3,77 @@ import { User, Mail, Phone, Calendar, MapPin, ShieldCheck, Lock, ChevronRight, S
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import type { CreditCardDetails } from '../types';
-
+import { userService, UserProfile } from '../services/userService';
 export default function Profile() {
   const [activeTab, setActiveTab] = useState<'info' | 'security' | 'payment'>('info');
   const [successVisible, setSuccessVisible] = useState(false);
   const [userRole, setUserRole] = useState<string>('PATIENT');
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
-    const role = localStorage.getItem('userRole');
-    if (role) setUserRole(role);
-  }, []);
+  // Payment Security State
+  const [isPaymentUnlocked, setIsPaymentUnlocked] = useState(false);
+  const [paymentPin, setPaymentPin] = useState('');
+  const [paymentPinError, setPaymentPinError] = useState(false);
 
-  const patientInfo = {
-    name: 'Nguyễn Văn A',
-    id: 'BN-2024-0511',
-    dob: '15/05/1990',
-    gender: 'Nam',
-    phone: '0901 234 567',
-    email: 'hungdophu69@gmail.com',
-    address: '123 Đường ABC, Quận 1, TP. HCM',
-    bloodType: 'O+',
-    allergies: 'Không'
-  };
-
-  const [doctorInfo, setDoctorInfo] = useState({
-    name: 'BS. CKII. Lê Thành Nam',
-    id: 'DOC-12345',
-    specialty: 'Nội tổng quát',
-    age: 45,
-    education: 'Thạc sĩ Y khoa - Đại học Y Dược TP.HCM',
-    achievements: [
-      '15 năm kinh nghiệm lâm sàng',
-      'Thầy thuốc ưu tú 2021',
-      'Chuyên gia đầu ngành về quản lý bệnh mãn tính'
-    ],
-    rooms: ['Phòng 102 - Tầng 1'],
-    phone: '0988 777 666',
-    email: 'nam.le@hospital.com'
+  // Profile State
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState<any>({
+    firstName: '',
+    lastName: '',
+    phoneNumber: '',
+    address: '',
+    city: '',
+    country: '',
+    specialty: '',
+    education: '',
+    achievements: [],
+    rooms: ['Phòng 102 - Tầng 1']
   });
 
-  const displayInfo = userRole === 'DOCTOR' ? doctorInfo : patientInfo;
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await userService.getProfile();
+        setProfile(data);
+        setUserRole(data.role || 'PATIENT');
+        setEditForm({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          phoneNumber: data.phoneNumber || '',
+          address: data.address || '',
+          city: data.city || '',
+          country: data.country || '',
+          specialty: data.doctor?.specialization || '',
+          education: data.doctor?.education || '',
+          achievements: data.doctor?.achievements ? data.doctor.achievements.split(',') : [],
+          rooms: ['Phòng 102 - Tầng 1'],
+        });
+      } catch (error) {
+        console.error('Failed to fetch profile', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const displayInfo = {
+    name: profile ? `${profile.firstName} ${profile.lastName}` : '',
+    id: profile?.id || '',
+    dob: profile?.dateOfBirth || '',
+    gender: profile?.gender === 'MALE' ? 'Nam' : 'Nữ',
+    phone: editForm.phoneNumber || '',
+    email: profile?.email || '',
+    address: editForm.address || '',
+    bloodType: profile?.patient?.bloodType || 'Chưa cập nhật',
+    allergies: profile?.patient?.allergies || 'Không',
+    specialty: editForm.specialty || '',
+    education: editForm.education || '',
+    achievements: editForm.achievements || [],
+    rooms: editForm.rooms || [],
+    age: profile?.dateOfBirth ? new Date().getFullYear() - new Date(profile.dateOfBirth).getFullYear() : 0,
+  };
 
   const [creditCard, setCreditCard] = useState<CreditCardDetails>(() => {
     const saved = localStorage.getItem('creditCard');
@@ -58,9 +88,21 @@ export default function Profile() {
     };
   });
 
-  const handleSave = () => {
-    setSuccessVisible(true);
-    setTimeout(() => setSuccessVisible(false), 3000);
+  const handleSave = async () => {
+    try {
+      await userService.updateProfile({
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        phoneNumber: editForm.phoneNumber,
+        address: editForm.address,
+        city: editForm.city,
+        country: editForm.country,
+      });
+      setSuccessVisible(true);
+      setTimeout(() => setSuccessVisible(false), 3000);
+    } catch (error) {
+      console.error('Failed to update profile', error);
+    }
   };
 
   const handleSaveCard = () => {
@@ -172,11 +214,11 @@ export default function Profile() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-left">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nhóm máu</p>
-                        <p className="text-lg font-bold text-slate-800">{patientInfo.bloodType}</p>
+                        <p className="text-lg font-bold text-slate-800">{displayInfo.bloodType}</p>
                       </div>
                       <div className="text-left border-l border-slate-100 pl-4">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Giới tính</p>
-                        <p className="text-lg font-bold text-slate-800">{patientInfo.gender}</p>
+                        <p className="text-lg font-bold text-slate-800">{displayInfo.gender}</p>
                       </div>
                     </div>
                   )}
@@ -196,9 +238,14 @@ export default function Profile() {
                       <User className="absolute left-4 top-3.5 text-slate-400" size={18} />
                       <input 
                         type="text" 
-                        value={displayInfo.name}
+                        value={`${editForm.firstName} ${editForm.lastName}`.trim()}
                         onChange={(e) => {
-                          if (userRole === 'DOCTOR') setDoctorInfo({...doctorInfo, name: e.target.value});
+                          const parts = e.target.value.split(' ');
+                          setEditForm({
+                            ...editForm, 
+                            firstName: parts[0] || '', 
+                            lastName: parts.slice(1).join(' ') || ''
+                          });
                         }}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
@@ -211,11 +258,9 @@ export default function Profile() {
                       {userRole === 'DOCTOR' ? <Activity className="absolute left-4 top-3.5 text-slate-400" size={18} /> : <Calendar className="absolute left-4 top-3.5 text-slate-400" size={18} />}
                       <input 
                         type="text" 
-                        value={userRole === 'DOCTOR' ? `${doctorInfo.age} tuổi` : patientInfo.dob}
-                        onChange={(e) => {
-                          if (userRole === 'DOCTOR') setDoctorInfo({...doctorInfo, age: parseInt(e.target.value) || 0});
-                        }}
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all"
+                        value={userRole === 'DOCTOR' ? `${displayInfo.age} tuổi` : displayInfo.dob}
+                        disabled
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all cursor-not-allowed opacity-70"
                       />
                     </div>
                   </div>
@@ -227,8 +272,8 @@ export default function Profile() {
                         <Sparkles className="absolute left-4 top-3.5 text-slate-400" size={18} />
                         <input 
                           type="text" 
-                          value={doctorInfo.specialty}
-                          onChange={(e) => setDoctorInfo({...doctorInfo, specialty: e.target.value})}
+                          value={editForm.specialty}
+                          onChange={(e) => setEditForm({...editForm, specialty: e.target.value})}
                           className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all"
                         />
                       </div>
@@ -241,10 +286,8 @@ export default function Profile() {
                       <Phone className="absolute left-4 top-3.5 text-slate-400" size={18} />
                       <input 
                         type="text" 
-                        value={displayInfo.phone}
-                        onChange={(e) => {
-                          if (userRole === 'DOCTOR') setDoctorInfo({...doctorInfo, phone: e.target.value});
-                        }}
+                        value={editForm.phoneNumber}
+                        onChange={(e) => setEditForm({...editForm, phoneNumber: e.target.value})}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
                     </div>
@@ -257,10 +300,8 @@ export default function Profile() {
                       <input 
                         type="email" 
                         value={displayInfo.email}
-                        onChange={(e) => {
-                          if (userRole === 'DOCTOR') setDoctorInfo({...doctorInfo, email: e.target.value});
-                        }}
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all"
+                        disabled
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all cursor-not-allowed opacity-70"
                       />
                     </div>
                   </div>
@@ -271,9 +312,10 @@ export default function Profile() {
                       {userRole === 'DOCTOR' ? <ShieldCheck className="absolute left-4 top-3.5 text-slate-400" size={18} /> : <MapPin className="absolute left-4 top-3.5 text-slate-400" size={18} />}
                       <input 
                         type="text" 
-                        value={userRole === 'DOCTOR' ? doctorInfo.education : patientInfo.address}
+                        value={userRole === 'DOCTOR' ? editForm.education : editForm.address}
                         onChange={(e) => {
-                          if (userRole === 'DOCTOR') setDoctorInfo({...doctorInfo, education: e.target.value});
+                          if (userRole === 'DOCTOR') setEditForm({...editForm, education: e.target.value});
+                          else setEditForm({...editForm, address: e.target.value});
                         }}
                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
@@ -286,30 +328,30 @@ export default function Profile() {
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Phòng làm việc</label>
                           <button 
-                            onClick={() => setDoctorInfo({...doctorInfo, rooms: [...doctorInfo.rooms, '']})}
+                            onClick={() => setEditForm({...editForm, rooms: [...editForm.rooms, '']})}
                             className="text-[10px] font-bold text-primary hover:underline"
                           >
                             + Thêm phòng
                           </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {doctorInfo.rooms.map((room, idx) => (
+                          {editForm.rooms.map((room: string, idx: number) => (
                             <div key={idx} className="relative group">
                               <MapPin className="absolute left-4 top-3.5 text-slate-400" size={18} />
                               <input 
                                 type="text" 
                                 value={room}
                                 onChange={(e) => {
-                                  const newRooms = [...doctorInfo.rooms];
+                                  const newRooms = [...editForm.rooms];
                                   newRooms[idx] = e.target.value;
-                                  setDoctorInfo({...doctorInfo, rooms: newRooms});
+                                  setEditForm({...editForm, rooms: newRooms});
                                 }}
                                 className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all"
                                 placeholder={`Phòng ${idx + 1}...`}
                               />
-                              {doctorInfo.rooms.length > 1 && (
+                              {editForm.rooms.length > 1 && (
                                 <button 
-                                  onClick={() => setDoctorInfo({...doctorInfo, rooms: doctorInfo.rooms.filter((_, i) => i !== idx)})}
+                                  onClick={() => setEditForm({...editForm, rooms: editForm.rooms.filter((_: any, i: number) => i !== idx)})}
                                   className="absolute right-3 top-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                   <X size={16} />
@@ -324,29 +366,29 @@ export default function Profile() {
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Thành tích & Kinh nghiệm chuyên môn</label>
                           <button 
-                            onClick={() => setDoctorInfo({...doctorInfo, achievements: [...doctorInfo.achievements, '']})}
+                            onClick={() => setEditForm({...editForm, achievements: [...editForm.achievements, '']})}
                             className="text-[10px] font-bold text-primary hover:underline"
                           >
                             + Thêm thành tích
                           </button>
                         </div>
                         <div className="space-y-3">
-                          {doctorInfo.achievements.map((ach, idx) => (
+                          {editForm.achievements.map((ach: string, idx: number) => (
                             <div key={idx} className="relative group">
                               <Sparkles className="absolute left-4 top-3.5 text-slate-400" size={18} />
                               <textarea 
                                 value={ach}
                                 onChange={(e) => {
-                                  const newAchs = [...doctorInfo.achievements];
+                                  const newAchs = [...editForm.achievements];
                                   newAchs[idx] = e.target.value;
-                                  setDoctorInfo({...doctorInfo, achievements: newAchs});
+                                  setEditForm({...editForm, achievements: newAchs});
                                 }}
                                 className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-primary outline-none transition-all min-h-[80px] resize-none"
                                 placeholder={`Thành tích ${idx + 1}...`}
                               />
-                              {doctorInfo.achievements.length > 1 && (
+                              {editForm.achievements.length > 1 && (
                                 <button 
-                                  onClick={() => setDoctorInfo({...doctorInfo, achievements: doctorInfo.achievements.filter((_, i) => i !== idx)})}
+                                  onClick={() => setEditForm({...editForm, achievements: editForm.achievements.filter((_: any, i: number) => i !== idx)})}
                                   className="absolute right-3 top-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                   <X size={16} />
@@ -460,7 +502,49 @@ export default function Profile() {
             exit={{ opacity: 0, y: -10 }}
             className="max-w-2xl mx-auto space-y-6"
           >
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm space-y-8">
+            {!isPaymentUnlocked ? (
+              <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-6 text-center max-w-sm mx-auto">
+                <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Lock size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800">Xác thực bảo mật</h3>
+                <p className="text-sm text-slate-500">Vui lòng nhập mã PIN 6 số để truy cập thông tin thanh toán của bạn.</p>
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (paymentPin === '123456') {
+                      setIsPaymentUnlocked(true);
+                      setPaymentPinError(false);
+                    } else {
+                      setPaymentPinError(true);
+                      setTimeout(() => setPaymentPinError(false), 2000);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <input 
+                    type="password" 
+                    maxLength={6}
+                    value={paymentPin}
+                    onChange={(e) => setPaymentPin(e.target.value)}
+                    placeholder="Mã PIN 6 số"
+                    className={cn(
+                      "w-full px-4 py-4 bg-slate-50 border rounded-2xl text-center text-xl tracking-[0.5em] font-black focus:ring-2 focus:ring-primary outline-none transition-all",
+                      paymentPinError ? "border-red-500 animate-shake" : "border-slate-200"
+                    )}
+                  />
+                  <button 
+                    type="submit"
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg"
+                  >
+                    Xác nhận
+                  </button>
+                  {paymentPinError && <p className="text-[10px] text-red-500 font-bold">Mã PIN không chính xác!</p>}
+                </form>
+              </div>
+            ) : (
+              <>
+                <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm space-y-8">
               <div className="flex items-center justify-between">
                 <div>
                    <h3 className="text-xl font-bold text-slate-800">Thông tin thẻ thanh toán</h3>
@@ -574,6 +658,8 @@ export default function Profile() {
                   <p className="text-xs text-slate-500 leading-relaxed font-medium">Thông tin của bạn được mã hóa AES-256 và lưu trữ cục bộ. Chúng tôi không bao giờ chia sẻ dữ liệu thanh toán của bạn cho bên thứ ba.</p>
                </div>
             </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

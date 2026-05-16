@@ -80,440 +80,340 @@ export interface LibraryItem {
 
 export interface CreditCard {
   id: string;
-  patientId: string;
+  userId: string;
   cardNumber: string;
+  cardHolder: string;
   expiryDate: string;
-  cardholderName: string;
+  cvv: string;
   isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Notification {
   id: string;
-  patientId: string;
+  userId: string;
   title: string;
   message: string;
+  type: string;
   isRead: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
+const getHeaders = () => {
+  const token = authService.getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+  };
+};
+
 export const dataService = {
-  // Appointments
-  async createAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appointment> {
-    const token = authService.getToken();
+  // ============ APPOINTMENTS ============
+  async createAppointment(data: any): Promise<Appointment> {
     const response = await fetch(`${API_BASE_URL}/data/appointments`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(appointmentData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to create appointment');
-    }
-
-    const data = await response.json();
-    return data.appointment;
+    if (!response.ok) throw new Error('Failed to create appointment');
+    return response.json();
   },
 
-  async getAppointments(): Promise<Appointment[]> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/appointments`, {
+  async getAppointments(patientId?: string): Promise<Appointment[]> {
+    const url = new URL(`${API_BASE_URL}/data/appointments`);
+    if (patientId) url.searchParams.append('patientId', patientId);
+    const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch appointments');
-    }
-
-    const data = await response.json();
-    return data.appointments;
+    if (!response.ok) throw new Error('Failed to fetch appointments');
+    return response.json();
   },
 
-  async updateAppointment(id: string, updateData: Partial<Appointment>): Promise<Appointment> {
-    const token = authService.getToken();
+  async updateAppointment(id: string, data: any): Promise<Appointment> {
     const response = await fetch(`${API_BASE_URL}/data/appointments/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to update appointment');
-    }
-
-    const data = await response.json();
-    return data.appointment;
+    if (!response.ok) throw new Error('Failed to update appointment');
+    return response.json();
   },
 
-  // Lab Results
-  async getLabResults(): Promise<LabResult[]> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/lab-results`, {
+  // ============ LAB RESULTS ============
+  async getLabResults(patientId?: string): Promise<LabResult[]> {
+    const url = new URL(`${API_BASE_URL}/data/lab-results`);
+    if (patientId) url.searchParams.append('patientId', patientId);
+    const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch lab results');
-    }
-
-    const data = await response.json();
-    return data.labResults;
+    if (!response.ok) throw new Error('Failed to fetch lab results');
+    return response.json();
   },
 
-  async createLabResult(labResultData: Omit<LabResult, 'id' | 'createdAt' | 'updatedAt'>): Promise<LabResult> {
-    const token = authService.getToken();
+  async createLabResult(data: any): Promise<LabResult> {
     const response = await fetch(`${API_BASE_URL}/data/lab-results`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(labResultData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to create lab result');
-    }
-
-    const data = await response.json();
-    return data.labResult;
+    if (!response.ok) throw new Error('Failed to create lab result');
+    return response.json();
   },
 
-  async updateLabResult(id: string, updateData: Partial<LabResult>): Promise<LabResult> {
-    const token = authService.getToken();
+  async updateLabResult(id: string, data: any): Promise<LabResult> {
     const response = await fetch(`${API_BASE_URL}/data/lab-results/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to update lab result');
-    }
-
-    const data = await response.json();
-    return data.labResult;
+    if (!response.ok) throw new Error('Failed to update lab result');
+    return response.json();
   },
 
-  // Medical Records
-  async getMedicalRecords(): Promise<MedicalRecord[]> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/medical-records`, {
+  // ============ MEDICAL RECORDS ============
+  async getMedicalRecords(patientId?: string): Promise<MedicalRecord[]> {
+    const url = new URL(`${API_BASE_URL}/data/medical-records`);
+    if (patientId) url.searchParams.append('patientId', patientId);
+    const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch medical records');
-    }
-
-    const data = await response.json();
-    return data.medicalRecords;
+    if (!response.ok) throw new Error('Failed to fetch medical records');
+    return response.json();
   },
 
-  async createMedicalRecord(recordData: Omit<MedicalRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<MedicalRecord> {
-    const token = authService.getToken();
+  async createMedicalRecord(data: any): Promise<MedicalRecord> {
     const response = await fetch(`${API_BASE_URL}/data/medical-records`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(recordData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to create medical record');
-    }
-
-    const data = await response.json();
-    return data.medicalRecord;
+    if (!response.ok) throw new Error('Failed to create medical record');
+    return response.json();
   },
 
-  async updateMedicalRecord(id: string, updateData: Partial<MedicalRecord>): Promise<MedicalRecord> {
-    const token = authService.getToken();
+  async updateMedicalRecord(id: string, data: any): Promise<MedicalRecord> {
     const response = await fetch(`${API_BASE_URL}/data/medical-records/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to update medical record');
-    }
-
-    const data = await response.json();
-    return data.medicalRecord;
+    if (!response.ok) throw new Error('Failed to update medical record');
+    return response.json();
   },
 
-  // Prescriptions
-  async getPrescriptions(): Promise<Prescription[]> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/prescriptions`, {
+  // ============ PRESCRIPTIONS ============
+  async getPrescriptions(patientId?: string): Promise<Prescription[]> {
+    const url = new URL(`${API_BASE_URL}/data/prescriptions`);
+    if (patientId) url.searchParams.append('patientId', patientId);
+    const response = await fetch(url.toString(), {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch prescriptions');
-    }
-
-    const data = await response.json();
-    return data.prescriptions;
+    if (!response.ok) throw new Error('Failed to fetch prescriptions');
+    return response.json();
   },
 
-  async createPrescription(prescriptionData: Omit<Prescription, 'id' | 'createdAt' | 'updatedAt'>): Promise<Prescription> {
-    const token = authService.getToken();
+  async createPrescription(data: any): Promise<Prescription> {
     const response = await fetch(`${API_BASE_URL}/data/prescriptions`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(prescriptionData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to create prescription');
-    }
-
-    const data = await response.json();
-    return data.prescription;
+    if (!response.ok) throw new Error('Failed to create prescription');
+    return response.json();
   },
 
-  async updatePrescription(id: string, updateData: Partial<Prescription>): Promise<Prescription> {
-    const token = authService.getToken();
+  async updatePrescription(id: string, data: any): Promise<Prescription> {
     const response = await fetch(`${API_BASE_URL}/data/prescriptions/${id}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to update prescription');
-    }
-
-    const data = await response.json();
-    return data.prescription;
+    if (!response.ok) throw new Error('Failed to update prescription');
+    return response.json();
   },
 
-  // Payments
+  // ============ PAYMENTS ============
   async getPayments(): Promise<Payment[]> {
-    const token = authService.getToken();
     const response = await fetch(`${API_BASE_URL}/data/payments`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch payments');
-    }
-
-    const data = await response.json();
-    return data.payments;
+    if (!response.ok) throw new Error('Failed to fetch payments');
+    return response.json();
   },
 
-  async createPayment(paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Payment> {
-    const token = authService.getToken();
+  async createPayment(data: any): Promise<Payment> {
     const response = await fetch(`${API_BASE_URL}/data/payments`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(paymentData),
+      headers: getHeaders(),
+      body: JSON.stringify(data),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to create payment');
-    }
-
-    const data = await response.json();
-    return data.payment;
+    if (!response.ok) throw new Error('Failed to create payment');
+    return response.json();
   },
 
-  // Hospital Services (Public)
+  // ============ HOSPITAL SERVICES ============
   async getHospitalServices(): Promise<HospitalService[]> {
+    const response = await fetch(`${API_BASE_URL}/data/services`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch hospital services');
+    return response.json();
+  },
+
+  // ============ LIBRARY ============
+  async getLibraryDiseases(): Promise<LibraryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/data/library/diseases`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch diseases');
+    return response.json();
+  },
+
+  async getLibraryDrugs(): Promise<LibraryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/data/library/drugs`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch drugs');
+    return response.json();
+  },
+
+  async getLibraryProcedures(): Promise<LibraryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/data/library/procedures`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch procedures');
+    return response.json();
+  },
+
+  async getLibraryLabTests(): Promise<LibraryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/data/library/lab-tests`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch lab tests');
+    return response.json();
+  },
+
+  // ============ CREDIT CARDS ============
+  async getCreditCards(): Promise<CreditCard[]> {
+    const response = await fetch(`${API_BASE_URL}/data/credit-cards`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch credit cards');
+    return response.json();
+  },
+
+  async createCreditCard(data: any): Promise<CreditCard> {
+    const response = await fetch(`${API_BASE_URL}/data/credit-cards`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create credit card');
+    return response.json();
+  },
+
+  // ============ NOTIFICATIONS ============
+  async getNotifications(): Promise<Notification[]> {
+    const response = await fetch(`${API_BASE_URL}/data/notifications`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    return response.json();
+  },
+
+  async markNotificationAsRead(id: string): Promise<Notification> {
+    const response = await fetch(`${API_BASE_URL}/data/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to mark notification as read');
+    return response.json();
+  },
+
+  // ============ SERVICES ============
+  async getServices(): Promise<any[]> {
     const response = await fetch(`${API_BASE_URL}/data/services`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch hospital services');
-    }
-
-    const data = await response.json();
-    return data.services;
+    if (!response.ok) throw new Error('Failed to fetch services');
+    return response.json();
   },
 
-  // Library (Public)
-  async getLibraryDiseases(): Promise<LibraryItem[]> {
-    const response = await fetch(`${API_BASE_URL}/data/library/diseases`, {
+  // ============ ARTICLES ============
+  async getArticles(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/data/articles`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch diseases');
-    }
-
-    const data = await response.json();
-    return data.diseases;
+    if (!response.ok) throw new Error('Failed to fetch articles');
+    return response.json();
   },
 
-  async getLibraryDrugs(): Promise<LibraryItem[]> {
-    const response = await fetch(`${API_BASE_URL}/data/library/drugs`, {
+  // ============ ADMIN (Assumed endpoints) ============
+  async getAdminUsers(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch drugs');
-    }
-
-    const data = await response.json();
-    return data.drugs;
+    if (!response.ok) throw new Error('Failed to fetch users');
+    return response.json();
   },
 
-  async getLibraryProcedures(): Promise<LibraryItem[]> {
-    const response = await fetch(`${API_BASE_URL}/data/library/procedures`, {
+  async getAdminShifts(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/admin/shifts`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch procedures');
-    }
-
-    const data = await response.json();
-    return data.procedures;
+    if (!response.ok) throw new Error('Failed to fetch shifts');
+    return response.json();
   },
 
-  async getLibraryLabTests(): Promise<LibraryItem[]> {
-    const response = await fetch(`${API_BASE_URL}/data/library/lab-tests`, {
+  async getAdminHistory(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/admin/history`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch lab tests');
-    }
-
-    const data = await response.json();
-    return data.labTests;
+    if (!response.ok) throw new Error('Failed to fetch history');
+    return response.json();
   },
 
-  // Credit Cards
-  async getCreditCards(): Promise<CreditCard[]> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/credit-cards`, {
+  // ============ PATIENT DASHBOARD ============
+  async getPatientDashboard(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/user/dashboard`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch credit cards');
-    }
-
-    const data = await response.json();
-    return data.creditCards;
+    if (!response.ok) throw new Error('Failed to fetch patient dashboard');
+    return response.json();
   },
 
-  async createCreditCard(cardData: Omit<CreditCard, 'id'>): Promise<CreditCard> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/credit-cards`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cardData),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to create credit card');
-    }
-
-    const data = await response.json();
-    return data.creditCard;
-  },
-
-  // Notifications
-  async getNotifications(): Promise<Notification[]> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/notifications`, {
+  // ============ PENDING INVOICES ============
+  async getPendingInvoices(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/data/pending-invoices`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch notifications');
-    }
-
-    const data = await response.json();
-    return data.notifications;
-  },
-
-  async markNotificationAsRead(id: string): Promise<void> {
-    const token = authService.getToken();
-    const response = await fetch(`${API_BASE_URL}/data/notifications/${id}/read`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to mark notification as read');
-    }
+    if (!response.ok) throw new Error('Failed to fetch pending invoices');
+    return response.json();
   },
 };
+

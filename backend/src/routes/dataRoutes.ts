@@ -24,6 +24,12 @@ import {
   createPayment,
   getNotifications,
   markNotificationAsRead,
+  getAdminUsers,
+  getAdminShifts,
+  getAdminHistory,
+  getArticles,
+  getPendingInvoices,
+  getPatientDashboard,
 } from '../controllers/dataController';
 
 const router = Router();
@@ -34,6 +40,7 @@ router.get('/library/diseases', getLibraryDiseases);
 router.get('/library/drugs', getLibraryDrugs);
 router.get('/library/procedures', getLibraryProcedures);
 router.get('/library/lab-tests', getLibraryLabTests);
+router.get('/articles', getArticles);
 
 // Protected routes
 router.use(authMiddleware);
@@ -69,5 +76,12 @@ router.post('/credit-cards', createCreditCard);
 // Notifications
 router.get('/notifications', getNotifications);
 router.put('/notifications/:id/read', markNotificationAsRead);
+
+// Admin & Extra Data
+router.get('/admin/users', getAdminUsers);
+router.get('/admin/shifts', getAdminShifts);
+router.get('/admin/history', getAdminHistory);
+router.get('/pending-invoices', getPendingInvoices);
+router.get('/user/dashboard', getPatientDashboard);
 
 export default router;

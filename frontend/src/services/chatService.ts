@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { askMedicalAI as askMedicalAIBackend } from '../lib/gemini';
 
 export interface Message {
   role: 'user' | 'model';
@@ -38,33 +38,5 @@ export const chatStorageService = {
 };
 
 export async function askMedicalAI(message: string): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-  const contents = [
-    {
-      role: 'user',
-      parts: [{ text: message }],
-    },
-  ];
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents,
-      config: {
-        systemInstruction: `Bạn là Trợ lý Y tế AI chuyên sâu của ứng dụng Mediflow. 
-        Bạn có 3 năng lực chính:
-        1. Tra cứu thông tin bệnh lý, dược phẩm và thuật ngữ y tế một cách chính xác.
-        2. Quản lý và giải thích lịch trình khám bệnh, giúp bệnh nhân biết họ cần đi đâu tiếp theo.
-        3. Chẩn đoán bệnh dựa trên triệu chứng: Hãy hỏi thêm câu hỏi để thu hẹp phạm vi, sau đó đưa ra các chẩn đoán có khả năng nhưng LUÔN LUÔN kèm theo cảnh báo y khoa rằng đây chỉ là thông tin tham khảo và họ PHẢI gặp bác sĩ để có kết luận chính xác.
-
-        Hãy trả lời bằng ngôn ngữ mà người dùng đang sử dụng (Việt hoặc Nhật). 
-        Phong cách: Chuyên nghiệp, thấu hiểu, ngắn gọn và hữu ích.`,
-      },
-    });
-
-    return response.text;
-  } catch (error) {
-    console.error('Gemini Error:', error);
-    return 'Xin lỗi, tôi đã gặp sự cố khi kết nối. Vui lòng thử lại sau.';
-  }
+  return askMedicalAIBackend(message);
 }

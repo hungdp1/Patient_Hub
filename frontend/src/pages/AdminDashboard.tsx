@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { UserRole } from '../types';
+import { dataService } from '../services/dataService';
 
 interface ManagedUser {
   id: string;
@@ -51,51 +52,21 @@ interface ChangeLog {
   type: 'USER' | 'DUTY' | 'SYSTEM';
 }
 
-const MOCK_USERS: ManagedUser[] = [
-  { id: 'BS-102', name: 'BS. Lê Thành Nam', role: UserRole.DOCTOR, email: 'nam.le@medos.vn', phone: '0987654321', status: 'ACTIVE', joinedDate: '2024-01-15', department: 'Nội tổng quát' },
-  { id: 'BS-105', name: 'BS. Nguyễn Văn An', role: UserRole.DOCTOR, email: 'an.nguyen@medos.vn', phone: '0987123456', status: 'ACTIVE', joinedDate: '2024-02-10', department: 'Nhi khoa' },
-  { id: 'BN-201', name: 'Nguyễn Văn A', role: UserRole.PATIENT, email: 'vana@gmail.com', phone: '0912345678', status: 'ACTIVE', joinedDate: '2024-03-05' },
-  { id: 'BN-202', name: 'Trần Thị B', role: UserRole.PATIENT, email: 'thib@gmail.com', phone: '0944556677', status: 'LOCKED', joinedDate: '2024-03-12' },
-  { id: 'BN-203', name: 'Lê Văn C', role: UserRole.PATIENT, email: 'vanc@gmail.com', phone: '0977889900', status: 'ACTIVE', joinedDate: '2024-04-01' },
-  { id: 'KT-301', name: 'KTV. Nguyễn Văn Khoa', role: UserRole.TECHNICIAN, email: 'khoa.nguyen@medos.vn', phone: '0966778899', status: 'ACTIVE', joinedDate: '2024-04-15', department: 'Xét nghiệm' },
-];
-
-interface WorkingShift {
+export interface WorkingShift {
   id: string;
   doctorId: string;
   doctorName: string;
+  department?: string;
   date: string;
-  timeSlot: string;
-  type: 'REGULAR' | 'ON_CALL' | 'EMERGENCY' | 'OFF';
-  status: 'PENDING' | 'APPROVED' | 'DECLINED';
-  reason?: string;
+  slot?: string;
+  timeSlot?: string;
   patientName?: string;
   patientSummary?: string;
+  reason?: string;
+  type: 'REGULAR' | 'ON_CALL';
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'APPROVED' | 'DECLINED' | 'PENDING';
 }
 
-const MOCK_SHIFTS: WorkingShift[] = [
-  { id: 's1', doctorId: '1', doctorName: 'BS. Lê Thành Nam', date: new Date().toLocaleDateString('vi-VN'), timeSlot: '08:00 - 12:00', type: 'REGULAR', status: 'APPROVED' },
-  { id: 's2', doctorId: '1', doctorName: 'BS. Lê Thành Nam', date: new Date().toLocaleDateString('vi-VN'), timeSlot: '13:30 - 17:00', type: 'REGULAR', status: 'APPROVED' },
-  { 
-    id: 's3', 
-    doctorId: '2', 
-    doctorName: 'BS. Nguyễn Văn An', 
-    date: new Date().toLocaleDateString('vi-VN'), 
-    timeSlot: '08:00 - 12:00', 
-    type: 'REGULAR', 
-    status: 'PENDING', 
-    reason: 'Yêu cầu đổi ca do việc gia đình',
-    patientName: 'Phạm Huy Hoàng',
-    patientSummary: 'Viêm họng cấp, sốt cao 39 độ, cần kiểm tra amidal và kê đơn ngay.'
-  },
-];
-
-const MOCK_HISTORY: ChangeLog[] = [
-  { id: 'h1', userId: 'admin-1', userName: 'Admin Root', action: 'Cập nhật vai trò', target: 'BS. Lê Thành Nam', details: 'Thay đổi quyền quản lý ca trực', timestamp: '2024-05-13 10:30', type: 'USER' },
-  { id: 'h2', userId: 'admin-1', userName: 'Admin Root', action: 'Duyệt lịch trực', target: 'BS. Nguyễn Văn An', details: 'Duyệt ca trực ngày 14/05/2024', timestamp: '2024-05-13 09:15', type: 'DUTY' },
-  { id: 'h3', userId: 'admin-1', userName: 'Admin Root', action: 'Khóa tài khoản', target: 'BN-4455', details: 'Lý do: Vi phạm chính sách bảo mật', timestamp: '2024-05-12 16:45', type: 'SYSTEM' },
-  { id: 'h4', userId: 'admin-1', userName: 'Admin Root', action: 'Thêm mới bác sĩ', target: 'BS. Phạm Minh', details: 'Hồ sơ chuyên khoa Nội', timestamp: '2024-05-12 11:20', type: 'USER' },
-];
 
 export default function AdminDashboard() {
   const location = useLocation();
@@ -109,8 +80,28 @@ export default function AdminDashboard() {
     else setActiveTab('USERS');
   }, [location.search]);
 
-  const [users, setUsers] = useState<ManagedUser[]>(MOCK_USERS);
-  const [shifts, setShifts] = useState<WorkingShift[]>(MOCK_SHIFTS);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [shifts, setShifts] = useState<WorkingShift[]>([]);
+  const [historyLogs, setHistoryLogs] = useState<ChangeLog[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersData, shiftsData, historyData] = await Promise.all([
+          dataService.getAdminUsers().catch(() => []),
+          dataService.getAdminShifts().catch(() => []),
+          dataService.getAdminHistory().catch(() => []),
+        ]);
+        setUsers(usersData);
+        setShifts(shiftsData);
+        setHistoryLogs(historyData);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'DOCTOR' | 'PATIENT' | 'TECHNICIAN'>('ALL');
   const [isAddingUser, setIsAddingUser] = useState(false);
@@ -686,7 +677,7 @@ export default function AdminDashboard() {
           </div>
           
           <div className="p-8 space-y-6">
-            {MOCK_HISTORY.map((log, i) => (
+            {historyLogs.map((log, i) => (
               <motion.div 
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}

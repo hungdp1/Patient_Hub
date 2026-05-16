@@ -21,13 +21,14 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MOCK_RECORDS } from '../constants';
+
 import { cn } from '../lib/utils';
 import { UserRole, MedicalRecord } from '../types';
+import { dataService } from '../services/dataService';
 
 export default function MedicalRecords() {
   const navigate = useNavigate();
-  const [records, setRecords] = useState(MOCK_RECORDS);
+  const [records, setRecords] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'history' | 'labs' | 'meds'>('history');
   const [searchTerm, setSearchTerm] = useState('');
   const [userRole, setUserRole] = useState<UserRole>(UserRole.PATIENT);
@@ -90,13 +91,55 @@ export default function MedicalRecords() {
   ];
 
   useEffect(() => {
-    const role = localStorage.getItem('userRole') as UserRole;
+    const role = localStorage.getItem('userRole') as any;
     if (role) {
       setUserRole(role);
-      if (role === UserRole.ADMIN) {
+      if (role === 'ADMIN') {
         navigate('/admin');
       }
     }
+    
+    const fetchRecords = async () => {
+      try {
+        const [data, labData] = await Promise.all([
+          dataService.getMedicalRecords().catch(() => []),
+          dataService.getLabResults().catch(() => [])
+        ]);
+
+        if (data && data.length > 0) {
+          const mappedRecords = data.map((r: any) => {
+            const recordLabs = labData.filter((l:any) => l.recordId === r.id || !l.recordId);
+            return {
+              id: r.id,
+              patientName: 'Bệnh nhân ' + (r.patientId || '').substring(0, 4),
+              doctor: 'BS ' + (r.doctorId || '').substring(0, 4),
+              date: new Date(r.createdAt || new Date()).toLocaleDateString('vi-VN'),
+              diagnosis: r.diagnosis || 'Chưa có chẩn đoán',
+              symptoms: r.symptoms ? r.symptoms.split(',') : [],
+              summary: r.notes || '',
+              billingStatus: 'PAID',
+              totalCost: 0,
+              results: {
+                medications: r.treatment ? [
+                  { name: r.treatment, purpose: 'Điều trị', quantity: 1, unit: 'liều', dosage: 'Theo toa', duration: 'Theo toa', instructions: '', price: 0, morning: 1, noon:0, afternoon:0, evening:1 }
+                ] : [],
+                prescriptionNotes: r.notes,
+                blood: recordLabs.map((l:any) => ({ name: l.testName, value: l.resultValue || 'N/A', unit: 'N/A', range: 'N/A', status: 'NORMAL', date: new Date(l.date || new Date()).toLocaleDateString('vi-VN') })),
+                urine: [], stool: [], imaging: [], cardiovascular: []
+              }
+            };
+          });
+          setRecords(mappedRecords);
+        } else {
+          // Tự động dùng fallback nếu API rỗng để tránh sập UI
+          setRecords([]);
+        }
+      } catch (err) {
+        console.error(err);
+        setRecords([]);
+      }
+    };
+    fetchRecords();
   }, [navigate]);
 
   const handleSearchPatient = (e: React.FormEvent) => {
@@ -124,46 +167,63 @@ export default function MedicalRecords() {
     r.doctor.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSaveRecord = () => {
+  const handleSaveRecord = async () => {
     const totalCost = newRecordData.medications.reduce((sum, m) => sum + (m.price * (m.quantity || 0)), 0);
     
-    if (editingRecordId) {
-      setRecords(prev => prev.map(r => r.id === editingRecordId ? {
-        ...r,
-        diagnosis: newRecordData.diagnosis,
-        summary: newRecordData.summary,
-        totalCost: totalCost,
-        results: {
-          ...r.results,
-          medications: newRecordData.medications,
-          prescriptionNotes: newRecordData.prescriptionNotes
-        }
-      } : r));
-    } else {
-      const newRecord: MedicalRecord = {
-        id: `BN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-        date: newRecordData.date,
-        doctor: 'BS. Lê Thành Nam', // Assume current doctor
-        patientName: newRecordData.patientName,
-        diagnosis: newRecordData.diagnosis,
-        summary: newRecordData.summary,
-        billingStatus: 'PENDING',
-        totalCost: totalCost,
-        results: {
-          medications: newRecordData.medications,
-          prescriptionNotes: newRecordData.prescriptionNotes,
-          blood: [],
-          urine: [],
-          stool: [],
-          imaging: [],
-          cardiovascular: []
-        },
-        symptoms: newRecordData.symptoms.split(',').map(s => s.trim())
-      };
-      setRecords(prev => [newRecord, ...prev]);
+    try {
+      if (editingRecordId) {
+        await dataService.updateMedicalRecord(editingRecordId, {
+          diagnosis: newRecordData.diagnosis,
+          symptoms: newRecordData.symptoms,
+          notes: newRecordData.summary,
+          treatment: newRecordData.medications.map(m => m.name).join(', ')
+        });
+        
+        setRecords(prev => prev.map(r => r.id === editingRecordId ? {
+          ...r,
+          diagnosis: newRecordData.diagnosis,
+          summary: newRecordData.summary,
+          totalCost: totalCost,
+          results: {
+            ...r.results,
+            medications: newRecordData.medications,
+            prescriptionNotes: newRecordData.prescriptionNotes
+          }
+        } : r));
+      } else {
+        const newRec = await dataService.createMedicalRecord({
+          patientId: 'patient123',
+          doctorId: 'doctor123',
+          diagnosis: newRecordData.diagnosis,
+          symptoms: newRecordData.symptoms,
+          treatment: newRecordData.medications.map(m => m.name).join(', '),
+          notes: newRecordData.summary,
+        });
+
+        const newRecord: any = {
+          id: newRec.id || `BN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          date: newRecordData.date,
+          doctor: 'BS. Lê Thành Nam',
+          patientName: newRecordData.patientName,
+          diagnosis: newRecordData.diagnosis,
+          summary: newRecordData.summary,
+          billingStatus: 'PENDING',
+          totalCost: totalCost,
+          results: {
+            medications: newRecordData.medications,
+            prescriptionNotes: newRecordData.prescriptionNotes,
+            blood: [], urine: [], stool: [], imaging: [], cardiovascular: []
+          },
+          symptoms: newRecordData.symptoms.split(',').map(s => s.trim())
+        };
+        setRecords(prev => [newRecord, ...prev]);
+      }
+      setIsCreatingRecord(false);
+      setEditingRecordId(null);
+    } catch(err) {
+      console.error(err);
+      alert('Failed to save record');
     }
-    setIsCreatingRecord(false);
-    setEditingRecordId(null);
   };
 
   const handleEditRecord = (record: any) => {
@@ -564,7 +624,7 @@ export default function MedicalRecords() {
                 {(['blood', 'urine', 'stool', 'cardiovascular'] as const).map(catId => {
                   if (selectedLabCategory && selectedLabCategory !== catId) return null;
                   
-                  const results = MOCK_RECORDS.flatMap(r => r.results[catId] || []);
+                  const results = currentRecords.flatMap(r => r.results[catId] || []);
                   if (results.length === 0) return null;
 
                   return (
@@ -621,7 +681,7 @@ export default function MedicalRecords() {
 
                 {/* Imaging Category */}
                 {(!selectedLabCategory || selectedLabCategory === 'imaging') && (
-                  MOCK_RECORDS.flatMap(r => r.results.imaging || []).length > 0 && (
+                  currentRecords.flatMap(r => r.results.imaging || []).length > 0 && (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -629,7 +689,7 @@ export default function MedicalRecords() {
                     >
                       <h4 className="font-bold text-slate-800 ml-2">Chẩn đoán Hình ảnh</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {MOCK_RECORDS.flatMap(r => r.results.imaging || []).map((img, i) => (
+                        {currentRecords.flatMap(r => r.results.imaging || []).map((img: any, i: number) => (
                           <div key={i} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
                              <div className="relative h-48 bg-slate-900 group cursor-zoom-in">
                                <img 
@@ -676,7 +736,7 @@ export default function MedicalRecords() {
 
         {activeTab === 'meds' && (
            <div className="space-y-8">
-              {MOCK_RECORDS.filter(record => record.results.medications.length > 0)
+              {currentRecords.filter(record => record.results.medications && record.results.medications.length > 0)
                 .sort((a, b) => b.date.localeCompare(a.date))
                 .map((record, idx) => (
                   <motion.div 

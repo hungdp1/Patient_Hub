@@ -18,46 +18,61 @@ import {
   ChevronRight,
   Lock
 } from 'lucide-react';
-import { MOCK_EXAMS } from '../constants';
+
 import { ExamStatus, type MedicalExam, type PaymentHistoryItem, type PaymentMethodType } from '../types';
 import { cn } from '../lib/utils';
+import { dataService } from '../services/dataService';
 
-const MOCK_HISTORY: PaymentHistoryItem[] = [
-  {
-    id: '#MF-2024-001',
-    date: '10/05/2024 14:30',
-    totalAmount: 450000,
-    method: 'QR_CODE',
-    items: [
-      { id: '1', name: 'Khám nội tổng quát', price: 150000 },
-      { id: '2', name: 'Xét nghiệm máu', price: 300000 }
-    ],
-    status: 'SUCCESS'
-  },
-  {
-    id: '#MF-2024-002',
-    date: '08/05/2024 09:15',
-    totalAmount: 1200000,
-    method: 'CARD',
-    items: [
-      { id: '3', name: 'Siêu âm bụng', price: 200000 },
-      { id: '4', name: 'Chụp X-Quang phổi', price: 500000 },
-      { id: '5', name: 'Khám chuyên khoa', price: 500000 }
-    ],
-    status: 'SUCCESS'
-  }
-];
+
 
 export default function Payment() {
-  const [selectedExams, setSelectedExams] = useState<string[]>(
-    MOCK_EXAMS.filter(e => e.status !== ExamStatus.COMPLETED).map(e => e.id)
-  );
+  const [pendingExams, setPendingExams] = useState<MedicalExam[]>([]);
+  const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('QR_CODE');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [viewingBill, setViewingBill] = useState<PaymentHistoryItem | null>(null);
   const [showQRPortal, setShowQRPortal] = useState(false);
+  const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [historyData, pendingData] = await Promise.all([
+          dataService.getPayments(),
+          dataService.getPendingInvoices().catch(() => [])
+        ]);
+        
+        const mappedHistory: PaymentHistoryItem[] = historyData.map((pay: any) => ({
+          id: pay.id,
+          date: new Date(pay.date || pay.createdAt || new Date()).toLocaleString('vi-VN'),
+          totalAmount: pay.amount || 0,
+          method: pay.method === 'CREDIT_CARD' ? 'CARD' : 'QR_CODE',
+          items: [{ id: pay.recordId || '1', name: 'Dịch vụ y tế', price: pay.amount || 0 }],
+          status: pay.status === 'COMPLETED' ? 'SUCCESS' : 'PENDING'
+        }));
+        setHistory(mappedHistory);
+
+        const mappedExams = pendingData.map((e: any) => ({
+          id: e.id,
+          name: e.name || 'Dịch vụ khám bệnh',
+          date: e.date || new Date().toISOString(),
+          price: e.price || 150000,
+          status: e.status || ExamStatus.PENDING,
+          room: e.room || 'Phòng chờ',
+          estimatedDuration: 0,
+          currentWaitTime: 0,
+          order: 0
+        }));
+        setPendingExams(mappedExams);
+        setSelectedExams(mappedExams.filter((e: any) => e.status !== ExamStatus.COMPLETED).map((e: any) => e.id));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, []);
   
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pin, setPin] = useState('');
@@ -82,11 +97,11 @@ export default function Payment() {
     );
   };
 
-  const selectedTotal = MOCK_EXAMS
+  const selectedTotal = pendingExams
     .filter(e => selectedExams.includes(e.id))
     .reduce((sum, e) => sum + e.price, 0);
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (selectedExams.length === 0) return;
     
     if (paymentMethod === 'CARD' && !isUnlocked) {
@@ -100,20 +115,42 @@ export default function Payment() {
     }
 
     setIsProcessing(true);
-    // Simulate payment processing for card
-    setTimeout(() => {
+    try {
+      await dataService.createPayment({
+        patientId: 'patient123',
+        recordId: 'record123',
+        amount: selectedTotal,
+        method: 'CREDIT_CARD',
+        status: 'COMPLETED',
+        date: new Date().toISOString()
+      });
       setIsProcessing(false);
       setIsSuccess(true);
-    }, 2000);
+    } catch(err) {
+      console.error(err);
+      setIsProcessing(false);
+      alert('Thanh toán thất bại');
+    }
   };
 
-  const finalizeQR = () => {
+  const finalizeQR = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      await dataService.createPayment({
+        patientId: 'patient123',
+        recordId: 'record123',
+        amount: selectedTotal,
+        method: 'CASH', // or QR if API supports
+        status: 'COMPLETED',
+        date: new Date().toISOString()
+      });
       setShowQRPortal(false);
       setIsProcessing(false);
       setIsSuccess(true);
-    }, 2000);
+    } catch (err) {
+      console.error(err);
+      setIsProcessing(false);
+    }
   };
 
   if (showQRPortal) {
@@ -278,7 +315,7 @@ export default function Payment() {
                 </h3>
               </div>
               <div className="divide-y divide-slate-100">
-                {MOCK_HISTORY.map((bill) => (
+                {history.map((bill) => (
                   <div key={bill.id} className="p-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600">
@@ -327,7 +364,7 @@ export default function Payment() {
                   <span className="text-xs font-bold text-slate-400">{selectedExams.length} dịch vụ được chọn</span>
                 </div>
                 <div className="divide-y divide-slate-50">
-                  {MOCK_EXAMS.map((exam) => (
+                  {pendingExams.map((exam) => (
                     <div 
                       key={exam.id}
                       onClick={() => toggleExam(exam.id)}

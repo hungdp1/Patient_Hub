@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { MOCK_RECORDS } from '../constants';
+
+import { dataService } from '../services/dataService';
 
 interface LabOrder {
   id: string;
@@ -31,41 +32,32 @@ interface LabOrder {
   urgency: 'NORMAL' | 'URGENT';
 }
 
-const MOCK_ORDERS: LabOrder[] = [
-  {
-    id: 'ORD-001',
-    patientId: 'BN-102',
-    patientName: 'Trần Thị B',
-    doctorName: 'BS. Lê Thành Nam',
-    date: new Date().toLocaleDateString('vi-VN'),
-    tests: ['Xét nghiệm máu tổng quát', 'Nước tiểu'],
-    status: 'PENDING',
-    urgency: 'URGENT'
-  },
-  {
-    id: 'ORD-002',
-    patientId: 'BN-103',
-    patientName: 'Lê Văn C',
-    doctorName: 'BS. Nguyễn Văn An',
-    date: new Date().toLocaleDateString('vi-VN'),
-    tests: ['Siêu âm ổ bụng'],
-    status: 'IN_PROGRESS',
-    urgency: 'NORMAL'
-  },
-  {
-    id: 'ORD-003',
-    patientId: 'BN-104',
-    patientName: 'Phạm Thị D',
-    doctorName: 'BS. Lê Thành Nam',
-    date: new Date().toLocaleDateString('vi-VN'),
-    tests: ['X-Quang Phổi'],
-    status: 'PENDING',
-    urgency: 'NORMAL'
-  }
-];
+
 
 export default function LabResults() {
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+  const [orders, setOrders] = useState<LabOrder[]>([]);
+
+  React.useEffect(() => {
+    const fetchLabOrders = async () => {
+      try {
+        const data = await dataService.getLabResults();
+        const mappedOrders: LabOrder[] = data.map((lab: any) => ({
+          id: lab.id,
+          patientId: lab.patientId || 'BN-100',
+          patientName: 'Bệnh nhân ' + (lab.patientId || '').substring(0, 4),
+          doctorName: 'BS. ' + (lab.doctorId || '').substring(0, 4),
+          date: new Date(lab.date || lab.createdAt || new Date()).toLocaleDateString('vi-VN'),
+          tests: lab.testName ? lab.testName.split(',') : ['Xét nghiệm máu'],
+          status: lab.status === 'COMPLETED' ? 'COMPLETED' : lab.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'PENDING',
+          urgency: 'NORMAL'
+        }));
+        setOrders(mappedOrders);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchLabOrders();
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<LabOrder | null>(null);
   const [results, setResults] = useState<any[]>([]);
@@ -111,10 +103,20 @@ export default function LabResults() {
     setResults(newResults);
   };
 
-  const handleSaveToRecord = () => {
+  const handleSaveToRecord = async () => {
     if (!selectedOrder) return;
-    setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'COMPLETED' } : o));
-    alert('Kết quả xét nghiệm đã được lưu thành công.');
+    try {
+      const resultStr = results.map(r => r.items.map((i: any) => `${i.name}: ${i.value} ${i.unit}`).join(', ')).join(' | ');
+      await dataService.updateLabResult(selectedOrder.id, { 
+        status: 'COMPLETED',
+        result: resultStr
+      });
+      setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'COMPLETED' } : o));
+      alert('Kết quả xét nghiệm đã được lưu thành công.');
+    } catch(err) {
+      console.error(err);
+      alert('Lỗi lưu kết quả');
+    }
   };
 
   return (
