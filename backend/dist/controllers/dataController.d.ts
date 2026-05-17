@@ -1,0 +1,25 @@
+import { Response } from 'express';
+export declare const createAppointment: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getAppointments: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const updateAppointment: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getLabResults: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const createLabResult: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const updateLabResult: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getMedicalRecords: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const createMedicalRecord: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const updateMedicalRecord: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getPrescriptions: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const createPrescription: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const updatePrescription: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getPayments: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getHospitalServices: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getLibraryDiseases: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getLibraryDrugs: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getLibraryProcedures: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getLibraryLabTests: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getCreditCards: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const createCreditCard: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const createPayment: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const getNotifications: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+export declare const markNotificationAsRead: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
+//# sourceMappingURL=dataController.d.ts.map

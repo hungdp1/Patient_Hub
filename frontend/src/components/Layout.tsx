@@ -24,10 +24,17 @@ import {
 import { cn } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
 
+<<<<<<< Updated upstream
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
+=======
+import RealtimeStatus from './RealtimeStatus';
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  const { userName, userRole, logout } = useAuth();
+>>>>>>> Stashed changes
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleLogout = () => {
@@ -235,6 +242,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      <RealtimeStatus />
     </div>
   );
 }

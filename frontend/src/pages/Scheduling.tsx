@@ -27,8 +27,15 @@ import {
   FlaskConical,
   User
 } from 'lucide-react';
+<<<<<<< Updated upstream
 import { MOCK_EXAMS, MOCK_RECORDS } from '../constants';
 import { ExamStatus, type MedicalExam, UserRole, MedicalRecord } from '../types';
+=======
+import { dataService } from '../services/dataService';
+import { userService } from '../services/userService';
+import { socketService } from '../services/socketService';
+import { useSocket } from '../hooks/useSocket';
+>>>>>>> Stashed changes
 import { cn } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -66,6 +73,7 @@ export default function Scheduling() {
   const [viewingRecord, setViewingRecord] = useState<MedicalRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const { socket } = useSocket();
   
   const [cancellingAppId, setCancellingAppId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -102,6 +110,50 @@ export default function Scheduling() {
   const patientAppointment = appointments.find(a => a.patientName === 'Nguyễn Văn A'); // Simulate current patient info
   
   const isAdmin = userRole === UserRole.ADMIN;
+
+  const mapAppointmentToUI = (app: any): Appointment => {
+    const dateTime = new Date(app.appointmentDate || app.date || app.createdAt || new Date().toISOString());
+    return {
+      id: app.id,
+      patientName: app.patientName || `Bệnh nhân ${app.patientId?.substring(0, 4) ?? '...'} `,
+      time: app.appointmentTime || dateTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      date: dateTime.toLocaleDateString('vi-VN'),
+      status: app.status === 'confirmed' ? 'ACCEPTED' : app.status === 'cancelled' ? 'DECLINED' : 'PENDING',
+      dept: app.department || app.reason || app.notes || 'Nội tổng quát',
+      cancelReason: app.cancelReason,
+    };
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAppointmentCreated = (payload: any) => {
+      const appointment = mapAppointmentToUI(payload.appointment ?? payload);
+      setAppointments((prev) => [appointment, ...prev.filter((item) => item.id !== appointment.id)]);
+    };
+
+    const handleAppointmentUpdated = (payload: any) => {
+      const appointment = mapAppointmentToUI(payload.appointment ?? payload);
+      setAppointments((prev) => prev.map((item) => item.id === appointment.id ? appointment : item));
+    };
+
+    const handleAppointmentCancelled = (payload: any) => {
+      const appointment = mapAppointmentToUI(payload.appointment ?? payload);
+      setAppointments((prev) => prev.map((item) => item.id === appointment.id ? appointment : item));
+    };
+
+    socket.on('appointment:created', handleAppointmentCreated);
+    socket.on('appointment:updated', handleAppointmentUpdated);
+    socket.on('appointment:status_changed', handleAppointmentUpdated);
+    socket.on('appointment:cancelled', handleAppointmentCancelled);
+
+    return () => {
+      socket.off('appointment:created', handleAppointmentCreated);
+      socket.off('appointment:updated', handleAppointmentUpdated);
+      socket.off('appointment:status_changed', handleAppointmentUpdated);
+      socket.off('appointment:cancelled', handleAppointmentCancelled);
+    };
+  }, [socket]);
 
   const canEditRecord = (createdAt?: string) => {
     if (!createdAt) return true; // New record

@@ -10,12 +10,19 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+<<<<<<< Updated upstream
+=======
+import { dataService } from '../services/dataService';
+import { socketService } from '../services/socketService';
+import { useSocket } from '../hooks/useSocket';
+>>>>>>> Stashed changes
 import { cn } from '../lib/utils';
 import Markdown from 'react-markdown';
 import { chatService, type ChatSession, type Message, getGeminiResponse } from '../services/chatService';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Dashboard() {
+<<<<<<< Updated upstream
   const { t } = useLanguage();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -24,6 +31,12 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+=======
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newNotifications, setNewNotifications] = useState(0);
+  const { socket } = useSocket();
+>>>>>>> Stashed changes
 
   useEffect(() => {
     const history = chatService.getHistory();
@@ -36,8 +49,69 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+<<<<<<< Updated upstream
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+=======
+    if (!socket) return;
+
+    const handleAppointmentEvent = (payload: any) => {
+      setDashboardData((prev: any) => {
+        if (!prev) return prev;
+
+        const appointment = payload.appointment ?? payload;
+        const appointments = prev.appointments || [];
+        const index = appointments.findIndex((item: any) => item.id === appointment.id);
+
+        const updatedAppointments = index >= 0
+          ? appointments.map((item: any) => item.id === appointment.id ? appointment : item)
+          : [appointment, ...appointments];
+
+        return { ...prev, appointments: updatedAppointments };
+      });
+    };
+
+    const handleLabResultEvent = (payload: any) => {
+      setDashboardData((prev: any) => {
+        if (!prev) return prev;
+
+        const labResult = payload.labResult ?? payload;
+        const labResults = prev.labResults || [];
+        const index = labResults.findIndex((item: any) => item.id === labResult.id);
+
+        const updatedLabResults = index >= 0
+          ? labResults.map((item: any) => item.id === labResult.id ? labResult : item)
+          : [labResult, ...labResults];
+
+        return { ...prev, labResults: updatedLabResults };
+      });
+    };
+
+    const handleNotification = () => {
+      setNewNotifications((value) => value + 1);
+    };
+
+    socket.on('appointment:updated', handleAppointmentEvent);
+    socket.on('appointment:status_changed', handleAppointmentEvent);
+    socket.on('lab:result_available', handleLabResultEvent);
+    socket.on('notification:received', handleNotification);
+
+    return () => {
+      socket.off('appointment:updated', handleAppointmentEvent);
+      socket.off('appointment:status_changed', handleAppointmentEvent);
+      socket.off('lab:result_available', handleLabResultEvent);
+      socket.off('notification:received', handleNotification);
+    };
+  }, [socket]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+>>>>>>> Stashed changes
 
   const createNewSession = () => {
     const newId = Date.now().toString();
@@ -109,6 +183,7 @@ export default function Dashboard() {
   };
 
   return (
+<<<<<<< Updated upstream
     <div className="flex bg-slate-50 rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm h-[calc(100vh-140px)] relative transition-all duration-500">
       
       {/* Sidebar: Chat History */}
@@ -123,6 +198,29 @@ export default function Dashboard() {
             >
               {t('new_chat')}
             </button>
+=======
+    <div className="max-w-6xl mx-auto space-y-8 pb-20">
+      <div className="space-y-2">
+        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Tổng quan Sức khỏe</h2>
+        <p className="text-slate-500 text-sm">Cập nhật nhanh tình trạng y tế và các lịch trình sắp tới của bạn.</p>
+      </div>
+
+      {newNotifications > 0 && (
+        <div className="inline-flex items-center gap-3 rounded-3xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-900 shadow-sm">
+          <span className="font-bold">{newNotifications}</span> thông báo mới đang chờ cập nhật.
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center">
+            <Droplet size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nhóm máu</p>
+            <p className="text-2xl font-black text-slate-900">{dashboardData.bloodType || 'Chưa rõ'}</p>
+          </div>
+>>>>>>> Stashed changes
         </div>
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
