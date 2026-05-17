@@ -368,9 +368,9 @@ export const dataService = {
     return response.json();
   },
 
-  // ============ ADMIN (Assumed endpoints) ============
+  // ============ ADMIN ============
   async getAdminUsers(): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+    const response = await fetch(`${API_BASE_URL}/data/admin/users`, {
       method: 'GET',
       headers: getHeaders(),
     });
@@ -379,7 +379,7 @@ export const dataService = {
   },
 
   async getAdminShifts(): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/admin/shifts`, {
+    const response = await fetch(`${API_BASE_URL}/data/admin/shifts`, {
       method: 'GET',
       headers: getHeaders(),
     });
@@ -388,7 +388,7 @@ export const dataService = {
   },
 
   async getAdminHistory(): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/admin/history`, {
+    const response = await fetch(`${API_BASE_URL}/data/admin/history`, {
       method: 'GET',
       headers: getHeaders(),
     });
@@ -398,7 +398,7 @@ export const dataService = {
 
   // ============ PATIENT DASHBOARD ============
   async getPatientDashboard(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/user/dashboard`, {
+    const response = await fetch(`${API_BASE_URL}/data/user/dashboard`, {
       method: 'GET',
       headers: getHeaders(),
     });
@@ -416,4 +416,4 @@ export const dataService = {
     return response.json();
   },
 };
-
+

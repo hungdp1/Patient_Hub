@@ -18,6 +18,7 @@ export interface AppRoute {
 
 export const appRoutes: AppRoute[] = [
   { path: '/login', element: <Login /> },
+  { path: '/dashboard', element: <Dashboard />, protected: true },
   { path: '/scheduling', element: <Scheduling />, protected: true },
   { path: '/services', element: <HospitalServices />, protected: true },
   { path: '/library', element: <MedicalLibrary />, protected: true },
