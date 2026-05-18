@@ -29,13 +29,19 @@ export default function MedicalLibrary() {
     const fetchArticles = async () => {
       try {
         const data = await dataService.getArticles();
-        const mapped = data.map((a: any) => ({
-          id: a.id,
-          category: a.category ? (a.category.toUpperCase() === 'DISEASE' || a.category.toUpperCase() === 'TEST' || a.category.toUpperCase() === 'MEDICINE' || a.category.toUpperCase() === 'PROCEDURE' ? a.category.toUpperCase() : 'DISEASE') : 'DISEASE',
-          title: a.title,
-          description: a.description || (a.content ? a.content.substring(0, 100) + '...' : ''),
-          content: a.content || ''
-        }));
+        const mapped = data.map((a: any) => {
+          const sourceTitle = a.title || a.name || '';
+          const sourceDescription = a.description || a.summary || '';
+          const sourceContent = a.content || a.detail || '';
+          const normalizedCategory = String(a.category || '').trim().toUpperCase();
+          return {
+            id: String(a.id || a._id || Math.random().toString(36).substr(2, 9)),
+            category: ['DISEASE', 'TEST', 'MEDICINE', 'PROCEDURE'].includes(normalizedCategory) ? normalizedCategory as LibraryItem['category'] : 'DISEASE',
+            title: sourceTitle || (sourceContent ? sourceContent.substring(0, 50) + '...' : 'Không có tiêu đề'),
+            description: sourceDescription || (sourceContent ? sourceContent.substring(0, 100) + '...' : 'Không có mô tả'),
+            content: sourceContent,
+          };
+        });
         setItems(mapped);
       } catch (err) {
         console.error(err);
@@ -53,8 +59,10 @@ export default function MedicalLibrary() {
   const isAdmin = userRole === UserRole.ADMIN;
 
   const filteredItems = items.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const title = String(item.title || '').toLowerCase();
+    const description = String(item.description || '').toLowerCase();
+    const search = String(searchQuery || '').toLowerCase();
+    const matchesSearch = title.includes(search) || description.includes(search);
     const matchesCategory = activeCategory === 'ALL' || item.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
