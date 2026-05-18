@@ -35,9 +35,9 @@ export class AuthService implements IAuthService {
   ) {}
 
   private createToken(payload: { id: string; role: string }): string {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new ApiError(500, 'JWT secret is not configured');
+    const secret = process.env.JWT_SECRET || 'patienthub-local-secret';
+    if (!process.env.JWT_SECRET) {
+      console.warn('Warning: JWT_SECRET is not configured. Using development fallback secret.');
     }
 
     return jwt.sign(payload, secret as jwt.Secret, {

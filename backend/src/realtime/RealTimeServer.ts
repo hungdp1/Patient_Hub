@@ -121,6 +121,7 @@ class RealTimeServer {
 
     socket.join(`user:${socket.userId}`); // Join personal room
     socket.join(`role:${socket.userRole}`); // Join role-based room
+    socket.join('chat:global'); // Join a shared chat room for live messaging
   }
 
   private handleUserOnline(socket: AuthenticatedSocket) {

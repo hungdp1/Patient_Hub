@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './layout/Sidebar';
 import { Header } from './layout/Header';
 import { useAuth } from '../hooks/useAuth';
+import Chatbot from './Chatbot';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { userName, userRole, logout } = useAuth();
@@ -21,6 +22,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Header userName={userName} />
         <div className="flex-1 overflow-y-auto">{children}</div>
       </main>
+      <Chatbot />
     </div>
   );
 }

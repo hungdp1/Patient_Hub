@@ -56,6 +56,7 @@ export const authService = {
 
     const data = await response.json();
     const success = response.ok && data.success !== false;
+    const errorMessage = data.message || data.error || (success ? 'Đăng nhập thành công' : 'Đăng nhập thất bại');
 
     if (success && data.token && data.user) {
       setAuthState(data.token, data.user);
@@ -63,7 +64,7 @@ export const authService = {
 
     return {
       success,
-      message: data.message || (success ? 'Đăng nhập thành công' : 'Đăng nhập thất bại'),
+      message: errorMessage,
       token: data.token,
       user: data.user,
     };
@@ -80,6 +81,7 @@ export const authService = {
 
     const data = await response.json();
     const success = response.ok && data.success !== false;
+    const errorMessage = data.message || data.error || (success ? 'Đăng ký thành công' : 'Đăng ký thất bại');
 
     if (success && data.token && data.user) {
       setAuthState(data.token, data.user);
@@ -87,7 +89,7 @@ export const authService = {
 
     return {
       success,
-      message: data.message || (success ? 'Đăng ký thành công' : 'Đăng ký thất bại'),
+      message: errorMessage,
       token: data.token,
       user: data.user,
     };

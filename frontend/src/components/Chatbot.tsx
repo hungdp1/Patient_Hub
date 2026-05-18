@@ -5,6 +5,7 @@ import { askMedicalAI } from '../lib/gemini';
 import { cn } from '../lib/utils';
 import { ChatMessage } from './chat/ChatMessage';
 import { ChatInput } from './chat/ChatInput';
+import { socketService } from '../services/socketService';
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +17,7 @@ export default function Chatbot() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [remoteTyping, setRemoteTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -26,6 +28,29 @@ export default function Chatbot() {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    const socket = socketService.getSocket();
+    if (!socket) return;
+
+    const handleIncomingMessage = (payload: any) => {
+      const text = payload.message || payload.text || 'Tin nhắn mới từ hệ thống.';
+      setMessages((prev) => [...prev, { role: 'bot', text }]);
+    };
+
+    const handleTyping = () => {
+      setRemoteTyping(true);
+      window.setTimeout(() => setRemoteTyping(false), 1200);
+    };
+
+    socket.on('chat:message_received', handleIncomingMessage);
+    socket.on('chat:user_typing', handleTyping);
+
+    return () => {
+      socket.off('chat:message_received', handleIncomingMessage);
+      socket.off('chat:user_typing', handleTyping);
+    };
+  }, []);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -34,6 +59,11 @@ export default function Chatbot() {
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsLoading(true);
+
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit('chat:typing', { userName: 'Bạn', roomId: 'global' });
+    }
 
     const botResponse = await askMedicalAI(userMessage);
     setMessages(prev => [...prev, { role: 'bot', text: botResponse || 'Xin lỗi, tôi không thể trả lời lúc này.' }]);

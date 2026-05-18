@@ -10,12 +10,18 @@ export const globalErrorHandler = (
   console.error(err);
 
   if (err instanceof ApiError) {
-    res.status(err.statusCode).json({ error: err.message, details: err.details });
+    res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      error: err.message,
+      details: err.details,
+    });
     return;
   }
 
   res.status(500).json({
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    success: false,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
   });
 };
