@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { PrismaClient, UserRole, AppointmentStatus, RecordType, PaymentStatus, PaymentMethod } from '@prisma/client';
 import { hashPassword } from './src/utils/password';
 

@@ -131,9 +131,13 @@ export default function AdminDashboard() {
   ];
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          user.phone.includes(searchTerm);
+    const searchTermLower = searchTerm.toLowerCase();
+    const userName = (user as any).name ?? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
+    const userEmail = (user as any).email ?? '';
+    const userPhone = (user as any).phone ?? (user as any).phoneNumber ?? '';
+    const matchesSearch = userName.toLowerCase().includes(searchTermLower) ||
+                          userEmail.toLowerCase().includes(searchTermLower) ||
+                          userPhone.toLowerCase().includes(searchTermLower);
     const matchesRole = activeFilter === 'ALL' || user.role === activeFilter;
     return matchesSearch && matchesRole;
   });
