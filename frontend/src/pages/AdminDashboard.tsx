@@ -33,6 +33,8 @@ import { dataService } from '../services/dataService';
 interface ManagedUser {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: UserRole;
   email: string;
   phone: string;
