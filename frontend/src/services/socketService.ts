@@ -1,7 +1,12 @@
 import { io, Socket } from 'socket.io-client';
 import { authService } from './authService';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// In production (Docker + nginx), the socket connects to the same origin that
+// serves the frontend; nginx reverse-proxies /socket.io to the backend.
+// In dev, it points at the local backend on port 5000.
+const SOCKET_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? window.location.origin : 'http://localhost:5000');
 
 let socket: Socket | null = null;
 

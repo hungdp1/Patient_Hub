@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
@@ -7,6 +8,7 @@ import dataRoutes from './routes/dataRoutes';
 import aiRoutes from './routes/aiRoutes';
 import prisma from './lib/prismaClient';
 import { globalErrorHandler } from './middleware/error';
+import RealTimeServer from './realtime/RealTimeServer';
 
 dotenv.config();
 
@@ -24,10 +26,20 @@ const isLocalNetworkOrigin = (origin: string) => {
   return /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)[:0-9]*$/.test(origin);
 };
 
+// Self-host mode: when running behind an nginx reverse proxy on a VPS, the
+// public IP/domain is not known at config time. Auth uses Bearer tokens
+// (localStorage), not cookies, so reflecting the request origin is safe.
+const corsAllowAll = process.env.CORS_ALLOW_ALL === 'true';
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || isLocalNetworkOrigin(origin)) {
+      if (
+        corsAllowAll ||
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        isLocalNetworkOrigin(origin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error(`CORS policy: origin ${origin} is not allowed`));
@@ -64,8 +76,15 @@ app.use((_req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const httpServer = createServer(app);
+
+// Attach the realtime (Socket.io) server so live chat & notifications work.
+const realtime = new RealTimeServer(httpServer);
+export { realtime };
+
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🔌 Socket.io realtime server attached`);
 });
 
 process.on('SIGINT', async () => {
