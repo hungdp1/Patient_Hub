@@ -1,3 +1,4 @@
+import { GoogleGenAI } from '@google/genai';
 import {
   ChatExtractionInput,
   ChatExtractionResult,
@@ -8,6 +9,29 @@ import {
   LoadBalanceInput,
   LoadBalanceResult,
 } from '../models/aiModels';
+
+const MEDICAL_AI_SYSTEM = `Bạn là trợ lý y tế AI tên Mediflow, được thiết kế để hỗ trợ bệnh nhân tại bệnh viện Mediflow.
+Bạn có thể trả lời các câu hỏi về triệu chứng, thuốc, quy trình y tế và lịch khám.
+Luôn khuyến nghị bệnh nhân gặp bác sĩ cho các vấn đề y tế nghiêm trọng.
+Trả lời bằng tiếng Việt, ngắn gọn và dễ hiểu.`;
+
+async function callGemini(message: string, context?: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'your-gemini-api-key') {
+    return `Cảm ơn bạn đã hỏi: "${message}". Hệ thống trợ lý AI đang trong giai đoạn cấu hình. Vui lòng liên hệ bác sĩ để được tư vấn trực tiếp.`;
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = context ? `${context}\n\nCâu hỏi: ${message}` : message;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: prompt,
+    config: { systemInstruction: MEDICAL_AI_SYSTEM },
+  });
+
+  return response.text || 'Xin lỗi, tôi không thể trả lời lúc này.';
+}
 
 export interface IAiModel<I, O> {
   predict(input: I): Promise<O>;
@@ -67,9 +91,8 @@ export class AiService {
   }
 
   public async respondToChat(input: { message: string; context?: string; userId?: string }): Promise<{ response: string }> {
-    return {
-      response: `Cảm ơn bạn đã gửi: "${input.message}". Đây là phản hồi mẫu từ hệ thống trợ lý AI. Phần mô hình AI thực tế sẽ được tích hợp sau.`,
-    };
+    const response = await callGemini(input.message, input.context);
+    return { response };
   }
 
   public async predictSpecialty(input: DiagnosisInput): Promise<DiagnosisResult> {
