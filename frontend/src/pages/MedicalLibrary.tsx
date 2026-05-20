@@ -115,7 +115,7 @@ export default function MedicalLibrary() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Thư viện Toàn thư</h2>
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Thư viện Toàn thư</h2>
           <p className="text-slate-500 text-sm">Tra cứu thông tin tin cậy về y khoa, bệnh học và dược phẩm.</p>
         </div>
 
@@ -235,7 +235,7 @@ export default function MedicalLibrary() {
               {isEditing ? (
                 <div className="p-8 overflow-y-auto max-h-[90vh] space-y-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-2xl font-black text-slate-900">{editForm.id ? 'Chỉnh sửa bài viết' : 'Thêm bài viết mới'}</h3>
+                    <h3 className="text-2xl font-extrabold text-slate-900">{editForm.id ? 'Chỉnh sửa bài viết' : 'Thêm bài viết mới'}</h3>
                     <button onClick={() => setIsEditing(false)} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-600"><ArrowLeft size={24} /></button>
                   </div>
                   
@@ -328,7 +328,7 @@ export default function MedicalLibrary() {
                             {viewingItem.category}
                           </span>
                         </div>
-                        <h3 className="text-2xl font-black text-slate-900">{viewingItem.title}</h3>
+                        <h3 className="text-2xl font-extrabold text-slate-900">{viewingItem.title}</h3>
                       </div>
                     </div>
 

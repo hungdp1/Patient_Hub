@@ -564,7 +564,7 @@ export default function MedicalRecords() {
                                { l: 'T', v: med.evening }
                             ].map((s, idx) => (
                                <div key={idx} className={cn(
-                                 "w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black border transition-all",
+                                 "w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-extrabold border transition-all",
                                  s.v > 0 ? "bg-primary/10 border-primary/20 text-primary" : "bg-slate-50 border-slate-100 text-slate-300"
                                )}>
                                  {s.v > 0 ? s.v : '-'}
@@ -580,7 +580,7 @@ export default function MedicalRecords() {
                   </div>
                   {viewingVisit.results.prescriptionNotes && (
                     <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                       <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Lời dặn bác sĩ</p>
+                       <p className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest mb-1">Lời dặn bác sĩ</p>
                        <p className="text-xs text-amber-900 font-medium leading-relaxed">{viewingVisit.results.prescriptionNotes}</p>
                     </div>
                   )}
@@ -753,7 +753,7 @@ export default function MedicalRecords() {
                            <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
                               <Pill size={18} />
                            </div>
-                           <h3 className="text-xl font-black text-slate-800">Đơn Thuốc Điện Tử</h3>
+                           <h3 className="text-xl font-extrabold text-slate-800">Đơn Thuốc Điện Tử</h3>
                         </div>
                         <p className="text-xs text-slate-500 font-bold uppercase tracking-widest pl-10">Mã đơn: DT-{record.id.toUpperCase()}</p>
                       </div>
@@ -772,17 +772,17 @@ export default function MedicalRecords() {
                     <div className="p-8 space-y-6">
                       {/* Medication List */}
                       <div className="space-y-4">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 border-b border-slate-100 pb-2">Danh sách thuốc chỉ định</h4>
+                        <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-2 border-b border-slate-100 pb-2">Danh sách thuốc chỉ định</h4>
                         {record.results.medications.map((med, i) => (
                           <div key={i} className="flex flex-col md:flex-row gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-200/50 hover:bg-white hover:border-primary/30 transition-all group">
                              <div className="flex-1 space-y-3">
                                 <div className="flex items-start justify-between">
                                    <div>
-                                      <h5 className="text-lg font-black text-slate-800 group-hover:text-primary transition-colors">{med.name}</h5>
+                                      <h5 className="text-lg font-extrabold text-slate-800 group-hover:text-primary transition-colors">{med.name}</h5>
                                       <p className="text-xs font-bold text-slate-500">Mục đích: <span className="text-slate-700 italic">{med.purpose || 'Theo chỉ định của bác sĩ'}</span></p>
                                    </div>
                                    <div className="px-4 py-1.5 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                      <span className="text-sm font-black text-slate-900">{med.quantity} {med.unit}</span>
+                                      <span className="text-sm font-extrabold text-slate-900">{med.quantity} {med.unit}</span>
                                    </div>
                                 </div>
                                 
@@ -798,7 +798,7 @@ export default function MedicalRecords() {
                                         s.v > 0 ? "bg-primary/5 border-primary/20 text-primary" : "bg-white border-slate-100 text-slate-300"
                                       )}>
                                         <span className="text-[10px] font-bold uppercase mb-1">{s.l}</span>
-                                        <span className="text-sm font-black">{s.v}</span>
+                                        <span className="text-sm font-extrabold">{s.v}</span>
                                       </div>
                                    ))}
                                 </div>
@@ -827,7 +827,7 @@ export default function MedicalRecords() {
                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                               <FileText size={48} className="text-amber-600" />
                            </div>
-                           <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mb-2">Ghi chú & Lời dặn của bác sĩ</h5>
+                           <h5 className="text-[10px] font-extrabold text-amber-600 uppercase tracking-[0.2em] mb-2">Ghi chú & Lời dặn của bác sĩ</h5>
                            <p className="text-sm text-amber-900 font-medium leading-relaxed relative z-10">
                               {record.results.prescriptionNotes}
                            </p>
@@ -883,7 +883,7 @@ export default function MedicalRecords() {
                       <ClipboardList size={24} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-slate-900">{editingRecordId ? 'Chỉnh sửa hồ sơ bệnh án' : 'Tạo hồ sơ bệnh án mới'}</h3>
+                      <h3 className="text-xl font-extrabold text-slate-900">{editingRecordId ? 'Chỉnh sửa hồ sơ bệnh án' : 'Tạo hồ sơ bệnh án mới'}</h3>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Chuyên môn bác sĩ • {newRecordData.date}</p>
                     </div>
                   </div>
@@ -952,7 +952,7 @@ export default function MedicalRecords() {
 
                   <div className="pt-8 border-t border-slate-100 space-y-6">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kê đơn thuốc chi tiết</h4>
+                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Kê đơn thuốc chi tiết</h4>
                       <button 
                         onClick={() => setNewRecordData(prev => ({
                           ...prev,
@@ -1076,7 +1076,7 @@ export default function MedicalRecords() {
                     </div>
 
                     <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
-                      <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">Ghi chú & Lời dặn tổng quát</p>
+                      <p className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest mb-2">Ghi chú & Lời dặn tổng quát</p>
                       <textarea 
                         value={newRecordData.prescriptionNotes}
                         onChange={(e) => setNewRecordData(prev => ({ ...prev, prescriptionNotes: e.target.value }))}

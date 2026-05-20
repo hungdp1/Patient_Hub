@@ -231,93 +231,86 @@ export default function AdminDashboard() {
 
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Quản trị Nhân sự</h2>
-          <div className="flex gap-4">
-            <button 
-              onClick={() => setActiveTab('USERS')}
-              className={cn(
-                "px-4 py-2 rounded-xl text-sm font-bold transition-all",
-                activeTab === 'USERS' ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              )}
-            >
-              Nhân sự & Bệnh nhân
-            </button>
-            <button 
-              onClick={() => setActiveTab('DUTY')}
-              className={cn(
-                "px-4 py-2 rounded-xl text-sm font-bold transition-all",
-                activeTab === 'DUTY' ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              )}
-            >
-              Lịch trực
-            </button>
-            <button 
-              onClick={() => setActiveTab('HISTORY')}
-              className={cn(
-                "px-4 py-2 rounded-xl text-sm font-bold transition-all",
-                activeTab === 'HISTORY' ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              )}
-            >
-              Lịch sử thay đổi
-            </button>
-          </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="space-y-4">
+        <div>
+          <p className="eyebrow mb-1.5">Quản trị</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Quản trị Nhân sự</h1>
+          <p className="text-sm text-slate-500 mt-1.5">
+            Quản lý người dùng, lịch trực và theo dõi hoạt động hệ thống.
+          </p>
         </div>
-        
-        <div className="flex items-center gap-4">
+
+        <div className="inline-flex gap-1 p-1 bg-slate-100 rounded-2xl">
+          {[
+            { id: 'USERS' as const,   label: 'Nhân sự & Bệnh nhân' },
+            { id: 'DUTY' as const,    label: 'Lịch trực' },
+            { id: 'HISTORY' as const, label: 'Lịch sử thay đổi' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={cn(
+                'px-4 py-2 rounded-xl text-sm font-semibold transition-all',
+                activeTab === t.id
+                  ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70'
+                  : 'text-slate-500 hover:text-slate-700',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
 
       {/* Conditional Content */}
       {activeTab === 'USERS' ? (
-        <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden">
-          <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/30">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-              <h3 className="font-black text-slate-800 flex items-center gap-2 text-xl">
-                Quản lý tài khoản
-              </h3>
-              <div className="flex bg-white p-1 rounded-[1.2rem] border border-slate-200 shadow-sm relative">
+        <div className="card overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <h3 className="font-bold text-slate-900 text-base">Quản lý tài khoản</h3>
+              <div className="inline-flex gap-0.5 p-1 bg-slate-100 rounded-xl">
                 {(['ALL', 'DOCTOR', 'TECHNICIAN', 'PATIENT'] as const).map(f => (
                   <button
                     key={f}
                     onClick={() => setActiveFilter(f)}
                     className={cn(
-                      "px-5 py-1.5 rounded-lg text-xs font-black transition-all relative z-10",
-                      activeFilter === f ? "text-white" : "text-slate-400 hover:text-slate-600"
+                      "relative px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                      activeFilter === f ? "text-white" : "text-slate-500 hover:text-slate-700"
                     )}
                   >
                     {activeFilter === f && (
-                      <motion.div 
+                      <motion.div
                         layoutId="activeFilterBg"
-                        className="absolute inset-0 bg-slate-900 rounded-lg -z-10"
+                        className="absolute inset-0 bg-primary rounded-lg -z-10"
                         transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                       />
                     )}
-                    {f === 'ALL' ? 'Tất cả' : f === 'DOCTOR' ? 'Bác sĩ' : f === 'TECHNICIAN' ? 'KTV' : 'Bệnh nhân'}
+                    <span className="relative z-10">
+                      {f === 'ALL' ? 'Tất cả' : f === 'DOCTOR' ? 'Bác sĩ' : f === 'TECHNICIAN' ? 'KTV' : 'Bệnh nhân'}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
-                <input 
-                  type="text" 
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={16} />
+                <input
+                  type="text"
                   placeholder="Tìm tên, email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl w-full md:w-64 focus:ring-4 focus:ring-primary/10 outline-none transition-all shadow-sm text-sm"
+                  className="pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl w-full md:w-64 focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all text-sm"
                 />
               </div>
-              <button 
+              <button
                 onClick={() => setIsAddingUser(true)}
-                className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                className="btn-primary"
               >
-                Thêm mới
+                <Plus size={16} /> Thêm mới
               </button>
             </div>
           </div>
@@ -325,15 +318,15 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-left table-fixed min-w-[800px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="w-[30%] px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Người dùng</th>
-                  <th className="w-[20%] px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Vai trò</th>
-                  <th className="w-[30%] px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Liên hệ</th>
-                  <th className="w-[15%] px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Trạng thái</th>
-                  <th className="w-[5%] px-8 py-5 text-right"></th>
+                <tr className="bg-slate-50/60 border-b border-slate-100">
+                  <th className="w-[30%] px-6 py-4 text-xs font-semibold text-slate-500">Người dùng</th>
+                  <th className="w-[20%] px-6 py-4 text-xs font-semibold text-slate-500">Vai trò</th>
+                  <th className="w-[30%] px-6 py-4 text-xs font-semibold text-slate-500">Liên hệ</th>
+                  <th className="w-[15%] px-6 py-4 text-xs font-semibold text-slate-500 text-center">Trạng thái</th>
+                  <th className="w-[5%] px-6 py-4 text-right"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-100">
                 <AnimatePresence mode="wait">
                   {filteredUsers.map((user) => (
                     <motion.tr 
@@ -342,41 +335,44 @@ export default function AdminDashboard() {
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.2 }}
                       key={user.id} 
-                      className="hover:bg-slate-50/50 transition-colors group"
+                      className="hover:bg-slate-50/60 transition-colors group"
                     >
-                      <td className="px-8 py-6">
-                        <div className="overflow-hidden">
-                          <p className="font-bold text-slate-800">{user.name}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">ID: {user.id}</p>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-100 to-teal-100 text-primary-dark grid place-items-center font-bold text-xs shrink-0">
+                            {(user.name || '?').split(/\s+/).slice(-2).map((p: string) => p[0]?.toUpperCase()).join('')}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{user.name}</p>
+                            <p className="text-[11px] text-slate-400 font-mono truncate">ID: {user.id}</p>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-8 py-6">
+                      <td className="px-6 py-4">
                         <span className={cn(
-                          "text-[10px] font-black uppercase tracking-tighter whitespace-nowrap px-2 py-1 rounded-lg",
-                          user.role === UserRole.DOCTOR ? "bg-emerald-50 text-emerald-600" : user.role === UserRole.TECHNICIAN ? "bg-indigo-50 text-indigo-600" : "bg-orange-50 text-orange-600"
+                          user.role === UserRole.DOCTOR ? "pill-success"
+                          : user.role === UserRole.TECHNICIAN ? "pill-primary"
+                          : "pill-warning"
                         )}>
                           {user.role === UserRole.DOCTOR ? 'Bác sĩ' : user.role === UserRole.TECHNICIAN ? 'KTV' : 'Bệnh nhân'}
                         </span>
                       </td>
-                      <td className="px-8 py-6">
-                        <div className="space-y-1 overflow-hidden">
-                          <div className="text-xs text-slate-500 font-medium truncate">
-                             {user.email}
-                          </div>
-                          <div className="text-xs text-slate-500 font-medium truncate">
-                             {user.phone}
-                          </div>
+                      <td className="px-6 py-4">
+                        <div className="space-y-0.5 overflow-hidden">
+                          <div className="text-sm text-slate-700 truncate">{user.email}</div>
+                          <div className="text-xs text-slate-500 truncate">{user.phone}</div>
                         </div>
                       </td>
-                      <td className="px-8 py-6 text-center">
-                        <span className={cn(
-                          "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block whitespace-nowrap",
-                          user.status === 'ACTIVE' ? "bg-green-100 text-green-600 border border-green-200" : "bg-rose-100 text-rose-600 border border-rose-200"
-                        )}>
+                      <td className="px-6 py-4 text-center">
+                        <span className={user.status === 'ACTIVE' ? 'pill-success' : 'pill-danger'}>
+                          <span className={cn(
+                            'w-1.5 h-1.5 rounded-full',
+                            user.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-rose-500',
+                          )} />
                           {user.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'}
                         </span>
                       </td>
-                      <td className="px-8 py-6 text-right">
+                      <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => setEditingUser(user)}
@@ -416,13 +412,13 @@ export default function AdminDashboard() {
           {/* Header Actions for Duty */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
             <div className="flex flex-col">
-                <h3 className="text-3xl font-black text-slate-900">Điều phối lịch trực</h3>
+                <h3 className="text-3xl font-extrabold text-slate-900">Điều phối lịch trực</h3>
                 <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-1">Quản lý thời gian biểu đội ngũ y tế</p>
             </div>
             <div className="flex items-center gap-3">
                  <button 
                    onClick={() => setIsViewingSystemCalendar(true)}
-                   className="px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                   className="px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-slate-200 transition-all"
                  >
                    Xem lịch hệ thống
                  </button>
@@ -432,7 +428,7 @@ export default function AdminDashboard() {
                         setSelectedDate(null);
                         setSelectedDoctorForShift(null);
                       }}
-                      className="px-6 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
+                      className="px-6 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-slate-800 transition-all"
                    >
                       Quay lại
                    </button>
@@ -453,10 +449,10 @@ export default function AdminDashboard() {
                   <div className="bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 pb-6 border-b border-slate-50 gap-4">
                         <div className="flex flex-col">
-                           <h4 className="font-black text-slate-900 text-2xl tracking-tight uppercase">Yêu cầu đang chờ phê duyệt</h4>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Phê duyệt để cập nhật lịch công tác</p>
+                           <h4 className="font-extrabold text-slate-900 text-2xl tracking-tight uppercase">Yêu cầu đang chờ phê duyệt</h4>
+                           <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">Phê duyệt để cập nhật lịch công tác</p>
                         </div>
-                        <span className="px-4 py-2 bg-orange-100/50 text-orange-600 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                        <span className="px-4 py-2 bg-orange-100/50 text-orange-600 rounded-xl text-[10px] font-extrabold uppercase tracking-widest">
                           {shifts.filter(s => s.status === 'PENDING').length} mới
                         </span>
                       </div>
@@ -464,7 +460,7 @@ export default function AdminDashboard() {
                       <div className="flex flex-col gap-4">
                          {shifts.filter(s => s.status === 'PENDING').length === 0 ? (
                            <div className="w-full py-32 text-center space-y-6">
-                              <div className="w-24 h-24 bg-slate-50 rounded-[3rem] flex items-center justify-center mx-auto text-slate-300 font-black shadow-inner">
+                              <div className="w-24 h-24 bg-slate-50 rounded-[3rem] flex items-center justify-center mx-auto text-slate-300 font-extrabold shadow-inner">
                                 OK
                               </div>
                               <div className="space-y-2">
@@ -482,20 +478,20 @@ export default function AdminDashboard() {
                                >
                                   {/* Column 1: Doctor Info */}
                                   <div className="xl:w-[220px] shrink-0 space-y-1.5">
-                                     <p className="font-black text-slate-900 group-hover:text-primary transition-all text-lg truncate tracking-tight uppercase">{s.doctorName}</p>
+                                     <p className="font-extrabold text-slate-900 group-hover:text-primary transition-all text-lg truncate tracking-tight uppercase">{s.doctorName}</p>
                                      <div className="flex items-center gap-3">
-                                        <span className="text-[9px] bg-slate-900 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-widest">{doctor?.role === 'DOCTOR' ? 'Bác sĩ' : 'KTV'}</span>
+                                        <span className="text-[9px] bg-slate-900 text-white px-2 py-0.5 rounded-lg font-extrabold uppercase tracking-widest">{doctor?.role === 'DOCTOR' ? 'Bác sĩ' : 'KTV'}</span>
                                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {s.doctorId}</p>
                                      </div>
-                                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">{s.date}</p>
+                                     <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-[0.2em]">{s.date}</p>
                                   </div>
  
                                   <div className="hidden xl:block w-px h-12 bg-slate-100 shrink-0" />
  
                                   {/* Column 2: Time Slot */}
                                   <div className="xl:w-[140px] shrink-0">
-                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Khung giờ</span>
-                                     <span className="text-sm font-black text-slate-800 block tracking-tight">{s.timeSlot}</span>
+                                     <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Khung giờ</span>
+                                     <span className="text-sm font-extrabold text-slate-800 block tracking-tight">{s.timeSlot}</span>
                                   </div>
  
                                   <div className="hidden xl:block w-px h-12 bg-slate-100 shrink-0" />
@@ -508,8 +504,8 @@ export default function AdminDashboard() {
                                      <div className="flex-1 min-w-0">
                                         {s.patientName ? (
                                           <div className="h-full p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl space-y-1 group-hover:bg-indigo-50 transition-all">
-                                             <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Bệnh nhân</p>
-                                             <p className="font-black text-slate-800 text-xs truncate uppercase">{s.patientName}</p>
+                                             <p className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest">Bệnh nhân</p>
+                                             <p className="font-extrabold text-slate-800 text-xs truncate uppercase">{s.patientName}</p>
                                              {s.patientSummary && (
                                                <p className="text-[10px] text-slate-400 font-bold truncate italic opacity-70">
                                                   "{s.patientSummary}"
@@ -524,13 +520,13 @@ export default function AdminDashboard() {
                                      <div className="flex-1 min-w-0">
                                         {s.reason ? (
                                           <div className="h-full p-4 bg-orange-50/50 border border-orange-100/50 rounded-2xl space-y-1 group-hover:bg-orange-50 transition-all">
-                                             <p className="text-[9px] font-black text-orange-600 uppercase tracking-widest">Lý do điều phối</p>
+                                             <p className="text-[9px] font-extrabold text-orange-600 uppercase tracking-widest">Lý do điều phối</p>
                                              <p className="text-[10px] text-slate-500 font-bold italic line-clamp-2 leading-relaxed">
                                                 "{s.reason}"
                                              </p>
                                           </div>
                                         ) : (
-                                          <div className="h-full p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-[9px] font-black text-slate-300 uppercase tracking-widest">Lịch thường kỳ</div>
+                                          <div className="h-full p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-[9px] font-extrabold text-slate-300 uppercase tracking-widest">Lịch thường kỳ</div>
                                         )}
                                      </div>
                                   </div>
@@ -544,7 +540,7 @@ export default function AdminDashboard() {
                                          e.stopPropagation();
                                          handleDeclineShift(s.id);
                                        }}
-                                       className="px-6 py-3 border border-rose-100 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all"
+                                       className="px-6 py-3 border border-rose-100 text-rose-500 text-[10px] font-extrabold uppercase tracking-widest hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all"
                                      >
                                         Từ chối
                                      </button>
@@ -555,7 +551,7 @@ export default function AdminDashboard() {
                                          setSelectedDoctorForShift(users.find(u => u.id === s.doctorId) || null);
                                          setSelectedDate(s.date);
                                        }}
-                                       className="px-8 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary shadow-xl shadow-slate-900/10 active:scale-95 transition-all"
+                                       className="px-8 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-primary shadow-xl shadow-slate-900/10 active:scale-95 transition-all"
                                      >
                                         Phê duyệt
                                      </button>
@@ -578,24 +574,24 @@ export default function AdminDashboard() {
                   <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-2xl">
                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 pb-8 border-b border-slate-50">
                         <div className="space-y-1">
-                           <h4 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                           <h4 className="text-2xl font-extrabold text-slate-900 flex items-center gap-3">
                               Bản đồ điều phối ca trực
                            </h4>
                            <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] px-1">Chỉnh sửa trực tiếp để hoàn tất kế hoạch công tác</p>
                         </div>
                         
                         <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100 shadow-sm sm:gap-6 min-w-fit">
-                            <button onClick={prevMonth} className="px-5 py-2 hover:bg-white rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm transition-all border border-transparent hover:border-slate-100 whitespace-nowrap">Trước</button>
-                            <h4 className="text-sm font-black text-slate-800 min-w-32 text-center uppercase tracking-[0.2em] px-2">
+                            <button onClick={prevMonth} className="px-5 py-2 hover:bg-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest text-slate-500 shadow-sm transition-all border border-transparent hover:border-slate-100 whitespace-nowrap">Trước</button>
+                            <h4 className="text-sm font-extrabold text-slate-800 min-w-32 text-center uppercase tracking-[0.2em] px-2">
                                {viewedMonth.getMonth() + 1} / {viewedMonth.getFullYear()}
                             </h4>
-                            <button onClick={nextMonth} className="px-5 py-2 hover:bg-white rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-sm transition-all border border-transparent hover:border-slate-100 whitespace-nowrap">Sau</button>
+                            <button onClick={nextMonth} className="px-5 py-2 hover:bg-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest text-slate-500 shadow-sm transition-all border border-transparent hover:border-slate-100 whitespace-nowrap">Sau</button>
                         </div>
                      </div>
       
                      <div className="grid grid-cols-7 gap-px bg-slate-100 rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-inner">
                         {['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'].map(d => (
-                          <div key={d} className="bg-slate-50/80 py-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">{d}</div>
+                          <div key={d} className="bg-slate-50/80 py-6 text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-100">{d}</div>
                         ))}
                         {getDaysInMonth(viewedMonth).map((day, idx) => {
                           const dateStr = day?.toLocaleDateString('vi-VN');
@@ -621,7 +617,7 @@ export default function AdminDashboard() {
                                  <>
                                     <div className="flex justify-between items-start">
                                        <span className={cn(
-                                         "text-sm font-black w-8 h-8 flex items-center justify-center transition-all",
+                                         "text-sm font-extrabold w-8 h-8 flex items-center justify-center transition-all",
                                          isToday ? "bg-primary text-slate-900 rounded-full shadow-lg shadow-primary/20 scale-110" : "text-slate-400 group-hover:text-slate-800"
                                        )}>
                                          {day.getDate()}
@@ -629,12 +625,12 @@ export default function AdminDashboard() {
                                        {dayShifts.length > 0 && (
                                          <div className="flex -space-x-3">
                                             {Array.from(new Set(dayShifts.map(s => s.doctorId))).slice(0, 3).map((id, i) => (
-                                              <div key={id} className="w-6 h-6 rounded-xl bg-primary/20 border-2 border-white flex items-center justify-center text-[10px] font-black text-primary shadow-sm relative z-[1]">
+                                              <div key={id} className="w-6 h-6 rounded-xl bg-primary/20 border-2 border-white flex items-center justify-center text-[10px] font-extrabold text-primary shadow-sm relative z-[1]">
                                                  {i + 1}
                                               </div>
                                             ))}
                                             {new Set(dayShifts.map(s => s.doctorId)).size > 3 && (
-                                              <div className="w-6 h-6 rounded-xl bg-slate-900 text-white flex items-center justify-center text-[8px] font-black border-2 border-white z-0">
+                                              <div className="w-6 h-6 rounded-xl bg-slate-900 text-white flex items-center justify-center text-[8px] font-extrabold border-2 border-white z-0">
                                                  +{new Set(dayShifts.map(s => s.doctorId)).size - 3}
                                               </div>
                                             )}
@@ -646,16 +642,16 @@ export default function AdminDashboard() {
                                        {dayShifts.slice(0, 4).map(s => (
                                          <div key={s.id} className="p-1.5 px-3 bg-emerald-50/50 border border-emerald-100/50 rounded-lg text-[10px] font-bold text-emerald-700 flex justify-between items-center group/shift transition-all hover:bg-emerald-100 hover:border-emerald-200">
                                             <span className="truncate max-w-[60px]">{s.doctorName.split(' ').pop()}</span>
-                                            <span className="text-[8px] opacity-60 font-black">{s.timeSlot.split(' - ')[0]}</span>
+                                            <span className="text-[8px] opacity-60 font-extrabold">{s.timeSlot.split(' - ')[0]}</span>
                                          </div>
                                        ))}
                                        {dayShifts.length > 4 && (
-                                         <p className="text-[9px] font-black text-slate-300 pl-2 uppercase tracking-widest mt-1">+{dayShifts.length - 4} lịch khác</p>
+                                         <p className="text-[9px] font-extrabold text-slate-300 pl-2 uppercase tracking-widest mt-1">+{dayShifts.length - 4} lịch khác</p>
                                        )}
                                     </div>
                                     
                                     <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all scale-90 translate-y-2 group-hover:translate-y-0">
-                                       <div className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-2xl shadow-slate-400 active:scale-95 font-black text-xl">
+                                       <div className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-2xl shadow-slate-400 active:scale-95 font-extrabold text-xl">
                                           +
                                        </div>
                                     </div>
@@ -676,7 +672,7 @@ export default function AdminDashboard() {
       ) : (
         <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden min-h-[600px]">
           <div className="p-8 border-b border-slate-100 bg-slate-50/30">
-            <h3 className="font-black text-slate-800 flex items-center gap-2 text-xl">
+            <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-xl">
               Lịch sử các thay đổi
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-1">Ghi lại toàn bộ thao tác quản trị trên hệ thống</p>
@@ -694,9 +690,9 @@ export default function AdminDashboard() {
                 <div className="flex-1 space-y-2">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-black text-slate-900">{log.action}</span>
+                      <span className="text-sm font-extrabold text-slate-900">{log.action}</span>
                       <span className={cn(
-                        "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest",
+                        "px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-widest",
                         log.type === 'USER' ? "bg-emerald-50 text-emerald-500" : log.type === 'DUTY' ? "bg-orange-50 text-orange-500" : "bg-purple-50 text-purple-500"
                       )}>
                         {log.type}
@@ -743,16 +739,16 @@ export default function AdminDashboard() {
                <div className="p-10 space-y-8">
                   <div className="flex items-center justify-between">
                      <div className="flex flex-col">
-                           <h4 className="text-2xl font-black text-slate-900">Chi tiết yêu cầu</h4>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{selectedShiftForDetails.date} • {selectedShiftForDetails.timeSlot}</p>
+                           <h4 className="text-2xl font-extrabold text-slate-900">Chi tiết yêu cầu</h4>
+                           <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">{selectedShiftForDetails.date} • {selectedShiftForDetails.timeSlot}</p>
                      </div>
-                     <button onClick={() => setSelectedShiftForDetails(null)} className="px-4 py-2 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-xl transition-all text-[10px] font-black uppercase">Đóng</button>
+                     <button onClick={() => setSelectedShiftForDetails(null)} className="px-4 py-2 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-xl transition-all text-[10px] font-extrabold uppercase">Đóng</button>
                   </div>
 
                   <div className="space-y-6">
                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
                         <div className="flex flex-col gap-1 px-1">
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Người thực hiện</p>
+                           <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Người thực hiện</p>
                            <p className="font-extrabold text-slate-800 text-lg">{selectedShiftForDetails.doctorName}</p>
                         </div>
                      </div>
@@ -760,7 +756,7 @@ export default function AdminDashboard() {
                      {selectedShiftForDetails.patientName && (
                        <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-[2rem] space-y-4">
                           <div className="flex flex-col gap-1 px-1">
-                             <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Thông tin bệnh nhân</p>
+                             <p className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest">Thông tin bệnh nhân</p>
                              <p className="font-extrabold text-slate-800 text-lg">{selectedShiftForDetails.patientName}</p>
                           </div>
                           {selectedShiftForDetails.patientSummary && (
@@ -777,7 +773,7 @@ export default function AdminDashboard() {
                      {selectedShiftForDetails.reason && (
                        <div className="p-6 bg-orange-50 border border-orange-100 rounded-[2rem] space-y-4">
                           <div className="flex flex-col gap-1 px-1">
-                             <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Lý do điều phối</p>
+                             <p className="text-[10px] font-extrabold text-orange-600 uppercase tracking-widest">Lý do điều phối</p>
                              <p className="text-sm font-bold text-slate-800 tracking-tight">Yêu cầu thay đổi ca làm việc</p>
                           </div>
                           <div className="bg-white/60 p-4 rounded-2xl border border-orange-100/50">
@@ -791,7 +787,7 @@ export default function AdminDashboard() {
 
                   <button 
                     onClick={() => setSelectedShiftForDetails(null)}
-                    className="w-full py-5 bg-slate-900 text-white rounded-[1.8rem] text-sm font-black hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                    className="w-full py-5 bg-slate-900 text-white rounded-[1.8rem] text-sm font-extrabold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
                   >
                      Đóng cửa sổ
                   </button>
@@ -818,7 +814,7 @@ export default function AdminDashboard() {
               <div className="p-8 md:p-10 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-8 bg-slate-50/40 relative">
                  <div className="flex items-center gap-6">
                     <div className="flex flex-col">
-                       <h3 className="text-3xl font-black text-slate-900 tracking-tight">Kế hoạch Điều phối Tổng thể</h3>
+                       <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Kế hoạch Điều phối Tổng thể</h3>
                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5 flex items-center gap-2">
                           <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" /> Danh sách chi tiết các ca trực toàn hệ thống
                        </p>
@@ -833,7 +829,7 @@ export default function AdminDashboard() {
                          placeholder="TÌM TÊN BÁC SĨ..."
                          value={systemDoctorSearch}
                          onChange={(e) => setSystemDoctorSearch(e.target.value)}
-                         className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest w-44 placeholder:text-slate-300"
+                         className="bg-transparent border-none outline-none text-[10px] font-extrabold uppercase tracking-widest w-44 placeholder:text-slate-300"
                        />
                        {systemDoctorSearch && (
                          <button onClick={() => setSystemDoctorSearch('')} className="text-slate-300 hover:text-rose-500 transition-colors"><CloseIcon size={14} /></button>
@@ -842,29 +838,29 @@ export default function AdminDashboard() {
  
                     <div className="flex items-center gap-1 bg-white p-1 rounded-[1.5rem] border border-slate-100 shadow-sm">
                        <div className="px-4 py-2 flex flex-col">
-                          <span className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Từ ngày</span>
+                          <span className="text-[8px] font-extrabold text-slate-400 uppercase leading-none mb-1">Từ ngày</span>
                           <input 
                             type="date"
                             value={systemDateFrom}
                             onChange={(e) => setSystemDateFrom(e.target.value)}
-                            className="bg-transparent border-none outline-none text-[10px] font-black uppercase cursor-pointer"
+                            className="bg-transparent border-none outline-none text-[10px] font-extrabold uppercase cursor-pointer"
                           />
                        </div>
                        <div className="w-px h-8 bg-slate-100 mx-1" />
                        <div className="px-4 py-2 flex flex-col">
-                          <span className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Đến ngày</span>
+                          <span className="text-[8px] font-extrabold text-slate-400 uppercase leading-none mb-1">Đến ngày</span>
                           <input 
                             type="date"
                             value={systemDateTo}
                             onChange={(e) => setSystemDateTo(e.target.value)}
-                            className="bg-transparent border-none outline-none text-[10px] font-black uppercase cursor-pointer"
+                            className="bg-transparent border-none outline-none text-[10px] font-extrabold uppercase cursor-pointer"
                           />
                        </div>
                     </div>
  
                     <button 
                        onClick={() => setIsViewingSystemCalendar(false)} 
-                       className="px-6 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md active:scale-95"
+                       className="px-6 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md active:scale-95"
                     >
                        Đóng bản đồ
                     </button>
@@ -897,9 +893,9 @@ export default function AdminDashboard() {
                         className="bg-white border border-slate-100 p-7 rounded-[2.5rem] flex flex-col lg:flex-row lg:items-center justify-between gap-6 hover:border-primary/30 hover:shadow-2xl transition-all group shadow-sm ring-1 ring-slate-900/[0.02]"
                       >
                          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                            <p className="text-xl font-black text-slate-900 tracking-tight truncate">{s.doctorName}</p>
+                            <p className="text-xl font-extrabold text-slate-900 tracking-tight truncate">{s.doctorName}</p>
                             <div className="flex items-center gap-3">
-                               <span className="text-[9px] bg-slate-900 text-white px-2 py-0.5 rounded-md font-black uppercase tracking-widest">Bác sĩ</span>
+                               <span className="text-[9px] bg-slate-900 text-white px-2 py-0.5 rounded-md font-extrabold uppercase tracking-widest">Bác sĩ</span>
                                <span className="text-[10px] text-slate-400 font-bold">Mã số: {s.doctorId}</span>
                             </div>
                          </div>
@@ -907,7 +903,7 @@ export default function AdminDashboard() {
                          <div className="w-px h-12 bg-slate-100 hidden lg:block" />
  
                          <div className="flex-1 flex flex-col gap-1 px-0 lg:px-8">
-                            <p className="font-black text-slate-800 tracking-tight truncate uppercase text-xs">{s.patientName || 'THÔNG TIN BỆNH NHÂN TRỐNG'}</p>
+                            <p className="font-extrabold text-slate-800 tracking-tight truncate uppercase text-xs">{s.patientName || 'THÔNG TIN BỆNH NHÂN TRỐNG'}</p>
                             <p className="text-[10px] text-slate-400 font-bold italic line-clamp-1 leading-relaxed opacity-80">
                                {s.patientSummary ? `"${s.patientSummary}"` : 'Vui lòng cập nhật thông tin tóm tắt.'}
                             </p>
@@ -917,15 +913,15 @@ export default function AdminDashboard() {
  
                          <div className="flex items-center gap-6 lg:pl-4">
                             <div className="flex flex-col items-end whitespace-nowrap">
-                               <div className="text-slate-900 font-black text-sm group-hover:text-primary transition-colors">
+                               <div className="text-slate-900 font-extrabold text-sm group-hover:text-primary transition-colors">
                                   {s.date}
                                </div>
-                               <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-0.5">
+                               <div className="text-slate-400 text-[10px] font-extrabold uppercase tracking-widest mt-0.5">
                                   {s.timeSlot}
                                </div>
                             </div>
                             <div className={cn(
-                              "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                              "px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all",
                               s.status === 'APPROVED' ? "bg-emerald-50 text-emerald-500 border border-emerald-100" : "bg-orange-50 text-orange-500 border border-orange-100"
                             )}>
                                {s.status === 'APPROVED' ? 'Đã duyệt' : 'Chờ duyệt'}
@@ -940,7 +936,7 @@ export default function AdminDashboard() {
                             <CalendarDays size={48} />
                          </div>
                          <div className="space-y-2">
-                            <p className="text-slate-500 font-black text-xl">Chưa có bản ghi nào!</p>
+                            <p className="text-slate-500 font-extrabold text-xl">Chưa có bản ghi nào!</p>
                             <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Hệ thống đang chờ lệnh khởi động điều phối.</p>
                          </div>
                       </div>
@@ -973,7 +969,7 @@ export default function AdminDashboard() {
                  <div className="p-10 space-y-8 flex-1 flex flex-col">
                     <div className="flex items-center justify-between">
                        <div>
-                          <h3 className="text-2xl font-black text-slate-900">Quản lý ca trực ngày</h3>
+                          <h3 className="text-2xl font-extrabold text-slate-900">Quản lý ca trực ngày</h3>
                           <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">{selectedDate}</p>
                        </div>
                        <button onClick={() => setSelectedDate(null)} className="p-2 text-slate-400 hover:text-slate-600"><CloseIcon size={24} /></button>
@@ -997,7 +993,7 @@ export default function AdminDashboard() {
                               key={dept}
                               onClick={() => setSelectedDeptFilter(dept)}
                               className={cn(
-                                "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border",
+                                "px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all whitespace-nowrap border",
                                 selectedDeptFilter === dept 
                                   ? "bg-slate-900 text-white border-slate-900 shadow-md" 
                                   : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
@@ -1028,11 +1024,11 @@ export default function AdminDashboard() {
                              >
                                 <div className="flex flex-col pr-4">
                                    <p className="font-extrabold text-slate-800 group-hover:text-primary transition-colors">{doc.name}</p>
-                                   <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">ID: {doc.id} • {doc.department}</p>
+                                   <p className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest mt-0.5">ID: {doc.id} • {doc.department}</p>
                                 </div>
                                 <div className="flex items-center gap-4">
                                    {docShifts.length > 0 && (
-                                     <span className="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[9px] font-black uppercase">
+                                     <span className="px-3 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[9px] font-extrabold uppercase">
                                        {docShifts.length} Ca
                                      </span>
                                    )}
@@ -1049,7 +1045,7 @@ export default function AdminDashboard() {
                        <div className="flex items-center gap-5">
                           <button onClick={() => setSelectedDoctorForShift(null)} className="p-3 bg-white text-slate-400 rounded-2xl hover:text-slate-600 shadow-sm hover:shadow-md transition-all"><ChevronLeft size={20} /></button>
                           <div>
-                             <h4 className="text-xl font-black text-slate-900">{selectedDoctorForShift.name}</h4>
+                             <h4 className="text-xl font-extrabold text-slate-900">{selectedDoctorForShift.name}</h4>
                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sửa trực tiếp lịch ngày {selectedDate}</p>
                           </div>
                        </div>
@@ -1059,7 +1055,7 @@ export default function AdminDashboard() {
                     <div className="p-8 flex-1 overflow-y-auto space-y-8 custom-scrollbar">
                        <div className="space-y-4">
                           <div className="flex justify-between items-center mb-2">
-                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Danh sách ca trực hiện tại</p>
+                             <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Danh sách ca trực hiện tại</p>
                              <button 
                                onClick={() => {
                                  const d = selectedDate ? selectedDate.split('/').reverse().join('-') : '';
@@ -1077,15 +1073,15 @@ export default function AdminDashboard() {
                                <div key={s.id} className="p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all group">
                                   <div className="flex flex-col">
                                      <div className="flex items-center gap-3">
-                                        <p className="font-black text-slate-800 text-base tracking-tight">{s.timeSlot}</p>
+                                        <p className="font-extrabold text-slate-800 text-base tracking-tight">{s.timeSlot}</p>
                                         <span className={cn(
-                                          "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest",
+                                          "px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-widest",
                                           s.type === 'REGULAR' ? "bg-slate-100 text-slate-500" : "bg-blue-100 text-blue-600"
                                         )}>
                                            {s.type === 'REGULAR' ? 'THƯỜNG' : 'TRỰC GÁC'}
                                         </span>
                                      </div>
-                                     <p className="text-[9px] text-slate-400 font-black uppercase mt-0.5">Trạng thái: Đã phê duyệt</p>
+                                     <p className="text-[9px] text-slate-400 font-extrabold uppercase mt-0.5">Trạng thái: Đã phê duyệt</p>
                                   </div>
                                   <button 
                                     onClick={() => setShifts(prev => prev.filter(sh => sh.id !== s.id))}
@@ -1116,7 +1112,7 @@ export default function AdminDashboard() {
                            className="p-8 bg-slate-50 border-t border-slate-200"
                          >
                             <div className="flex items-center justify-between mb-6">
-                               <h5 className="font-black text-slate-800 uppercase text-xs tracking-widest flex items-center gap-2">
+                               <h5 className="font-extrabold text-slate-800 uppercase text-xs tracking-widest flex items-center gap-2">
                                   <div className="w-2 h-2 bg-primary rounded-full" /> Thiết lập ca trực nhanh
                                </h5>
                                <button onClick={() => setIsAddingShift(false)} className="text-slate-400 hover:text-slate-600"><CloseIcon size={20} /></button>
@@ -1147,7 +1143,7 @@ export default function AdminDashboard() {
                                        >
                                           <div className="flex flex-col">
                                              <span>{slot.label}</span>
-                                             <span className="text-[10px] opacity-60 font-black">{slot.time}</span>
+                                             <span className="text-[10px] opacity-60 font-extrabold">{slot.time}</span>
                                           </div>
                                           {newShift.slotId === slot.id && <CheckCircle2 size={18} />}
                                        </button>
@@ -1189,8 +1185,8 @@ export default function AdminDashboard() {
             >
               <div className="p-10 space-y-8">
                 <div className="text-center space-y-2">
-                  <h3 className="text-3xl font-black text-slate-900 tracking-tight">Thêm tài khoản mới</h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cung cấp thông tin định danh hệ thống</p>
+                  <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Thêm tài khoản mới</h3>
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Cung cấp thông tin định danh hệ thống</p>
                 </div>
 
                 <div className="space-y-4">
@@ -1200,7 +1196,7 @@ export default function AdminDashboard() {
                             key={r}
                             onClick={() => setNewUser(prev => ({ ...prev, role: r as UserRole }))}
                             className={cn(
-                              "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all relative z-10",
+                              "flex-1 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest flex items-center justify-center transition-all relative z-10",
                               newUser.role === r ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
                             )}
                           >
@@ -1253,8 +1249,8 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setIsAddingUser(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Huỷ</button>
-                  <button onClick={handleAddUser} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200">Xác nhận</button>
+                  <button onClick={() => setIsAddingUser(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-slate-200 transition-all">Huỷ</button>
+                  <button onClick={handleAddUser} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200">Xác nhận</button>
                 </div>
               </div>
             </motion.div>
@@ -1280,8 +1276,8 @@ export default function AdminDashboard() {
             >
               <div className="p-10 space-y-8">
                 <div className="text-center space-y-2">
-                  <h3 className="text-3xl font-black text-slate-900 tracking-tight">Chỉnh sửa tài khoản</h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cập nhật thông tin định danh người dùng</p>
+                  <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Chỉnh sửa tài khoản</h3>
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Cập nhật thông tin định danh người dùng</p>
                 </div>
 
                 <div className="space-y-4">
@@ -1291,7 +1287,7 @@ export default function AdminDashboard() {
                             key={r}
                             onClick={() => setEditingUser({ ...editingUser, role: r as UserRole })}
                             className={cn(
-                              "flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all relative z-10",
+                              "flex-1 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest flex items-center justify-center transition-all relative z-10",
                               editingUser.role === r ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
                             )}
                           >
@@ -1341,8 +1337,8 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setEditingUser(null)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Huỷ</button>
-                  <button onClick={handleUpdateUser} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200">Lưu thay đổi</button>
+                  <button onClick={() => setEditingUser(null)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-slate-200 transition-all">Huỷ</button>
+                  <button onClick={handleUpdateUser} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200">Lưu thay đổi</button>
                 </div>
               </div>
             </motion.div>

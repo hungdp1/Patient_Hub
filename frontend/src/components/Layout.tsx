@@ -20,7 +20,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <Header userName={userName} />
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="px-4 sm:px-8 lg:px-10 py-8">{children}</div>
+        </div>
       </main>
       <Chatbot />
     </div>

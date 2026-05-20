@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Bell, Clock, CreditCard, CalendarClock, Globe, CheckCircle2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Bell, CheckCircle2, HeartPulse, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { dataService, Notification } from '../../services/dataService';
 import { socketService } from '../../services/socketService';
@@ -9,9 +8,26 @@ interface HeaderProps {
   userName: string;
 }
 
+function formatRelative(iso: string): string {
+  try {
+    const t = new Date(iso).getTime();
+    const diff = Date.now() - t;
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'vừa xong';
+    if (m < 60) return `${m} phút trước`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} giờ trước`;
+    const d = Math.floor(h / 24);
+    return `${d} ngày trước`;
+  } catch {
+    return '';
+  }
+}
+
 function NotificationMenu() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -22,7 +38,6 @@ function NotificationMenu() {
         console.error('Failed to load notifications:', error);
       }
     };
-
     loadNotifications();
   }, []);
 
@@ -45,74 +60,114 @@ function NotificationMenu() {
     };
 
     socket.on('notification:received', handleNotification);
-
     return () => {
       socket.off('notification:received', handleNotification);
     };
   }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+    };
+    if (isOpen) document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [isOpen]);
 
   const unreadCount = notifications.filter((item) => !item.isRead).length;
 
   const markAsRead = async (id: string) => {
     try {
       await dataService.markNotificationAsRead(id);
-      setNotifications((prev) => prev.map((item) => item.id === id ? { ...item, isRead: true } : item));
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, isRead: true } : item)),
+      );
     } catch (error) {
       console.warn('Failed to mark notification as read:', error);
     }
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button
         onClick={() => setIsOpen((current) => !current)}
-        className="p-2 text-slate-400 hover:text-slate-900 transition-colors relative"
+        className="relative w-10 h-10 rounded-full grid place-items-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+        aria-label="Thông báo"
       >
-        <Bell size={20} />
+        <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-            {unreadCount}
+          <span className="absolute top-1.5 right-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
+
       <div
         className={cn(
-          'absolute right-0 mt-2 w-96 bg-white border border-slate-200 rounded-[2rem] shadow-2xl transition-all z-50 overflow-hidden',
-          isOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2',
+          'absolute right-0 mt-3 w-[380px] bg-white border border-slate-200/80 rounded-2xl shadow-[0_8px_32px_rgb(15_23_42/0.12)] transition-all z-50 overflow-hidden',
+          isOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2',
         )}
       >
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-          <p className="text-xs font-bold text-slate-900 uppercase tracking-widest">Thông báo mới</p>
-          <span className="text-[10px] text-slate-500">{unreadCount} chưa đọc</span>
+        <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Thông báo</p>
+            <p className="text-xs text-slate-500">
+              {unreadCount > 0 ? `${unreadCount} chưa đọc` : 'Tất cả đã được đọc'}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="w-8 h-8 grid place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto">
+        <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
           {notifications.length === 0 ? (
-            <div className="p-5 text-sm text-slate-500">Chưa có thông báo mới.</div>
-          ) : (
-            notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={cn(
-                  'p-5 hover:bg-slate-50 transition-colors flex gap-4',
-                  notification.isRead ? 'bg-white' : 'bg-slate-50',
-                )}
-              >
-                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                  <CheckCircle2 size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{notification.title}</p>
-                  <p className="text-[10px] text-slate-500 mt-1 leading-relaxed truncate">{notification.message}</p>
-                  <button
-                    onClick={() => markAsRead(notification.id)}
-                    className="mt-3 text-[10px] font-bold uppercase tracking-[0.22em] text-primary"
-                  >
-                    Đánh dấu đã đọc
-                  </button>
-                </div>
+            <div className="p-8 text-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 grid place-items-center text-slate-400 mb-3">
+                <Bell size={20} />
               </div>
-            ))
+              <p className="text-sm text-slate-500">Chưa có thông báo mới.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {notifications.map((n) => (
+                <li
+                  key={n.id}
+                  className={cn(
+                    'p-4 transition-colors flex gap-3',
+                    !n.isRead && 'bg-sky-50/40',
+                    n.isRead && 'hover:bg-slate-50',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'w-9 h-9 shrink-0 rounded-xl grid place-items-center',
+                      n.isRead ? 'bg-slate-100 text-slate-400' : 'bg-sky-100 text-primary',
+                    )}
+                  >
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{n.title}</p>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <span className="text-[11px] text-slate-400">{formatRelative(n.createdAt)}</span>
+                      {!n.isRead && (
+                        <button
+                          onClick={() => markAsRead(n.id)}
+                          className="text-[11px] font-semibold text-primary hover:text-primary-dark"
+                        >
+                          Đánh dấu đã đọc
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
@@ -121,21 +176,40 @@ function NotificationMenu() {
 }
 
 export function Header({ userName }: HeaderProps) {
+  const initials = userName.trim().split(/\s+/).filter(Boolean);
+  const initialsText =
+    initials.length === 0 ? '?'
+    : initials.length === 1 ? initials[0][0].toUpperCase()
+    : (initials[0][0] + initials[initials.length - 1][0]).toUpperCase();
+
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between z-10 shrink-0">
-      <div className="flex-1 flex items-center gap-6">
-        <div className="md:hidden flex items-center gap-2">
-          <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-primary font-bold tracking-tight">+</div>
-          <span className="font-bold tracking-tight">MED-OS</span>
+    <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/70 px-4 sm:px-8 flex items-center justify-between z-10 shrink-0">
+      {/* Left: mobile logo (visible <md) */}
+      <div className="md:hidden flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-teal-500 grid place-items-center">
+          <HeartPulse size={17} className="text-white" />
         </div>
+        <span className="font-bold tracking-tight text-slate-900">Mediflow</span>
       </div>
-      <div className="flex items-center gap-6">
+
+      {/* Spacer for desktop */}
+      <div className="hidden md:block flex-1" />
+
+      {/* Right: notifications + user */}
+      <div className="flex items-center gap-1 sm:gap-2">
         <NotificationMenu />
-        <div className="flex items-center gap-3 text-slate-600 text-xs uppercase tracking-[0.22em] font-bold">
-          <div className="hidden md:block">{userName}</div>
-          <div className="hidden md:flex items-center gap-1 px-3 py-2 bg-slate-100 rounded-2xl"> 
-            <Globe size={14} />
-            <span>Online</span>
+
+        <div className="hidden sm:flex items-center gap-3 pl-3 ml-1 border-l border-slate-200/70">
+          <div className="text-right hidden md:block">
+            <p className="text-sm font-semibold text-slate-900 leading-tight">{userName}</p>
+            <p className="text-[11px] text-slate-500 leading-tight">
+              <span className="inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Đang hoạt động
+              </span>
+            </p>
+          </div>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-100 to-teal-100 text-primary-dark grid place-items-center font-bold text-xs ring-2 ring-white shadow-sm">
+            {initialsText}
           </div>
         </div>
       </div>

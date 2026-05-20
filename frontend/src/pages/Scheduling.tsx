@@ -267,7 +267,7 @@ export default function Scheduling() {
       <div className="max-w-6xl mx-auto space-y-8 pb-20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-             <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+             <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
                Quản lý lịch hẹn
              </h2>
              <p className="text-slate-500 text-sm">
@@ -309,7 +309,7 @@ export default function Scheduling() {
                         <UserIcon size={32} />
                       </div>
                       <div>
-                        <h4 className="text-3xl font-black text-slate-900 tracking-tight">{viewingRecord.patientName || 'Bệnh nhân'}</h4>
+                        <h4 className="text-3xl font-extrabold text-slate-900 tracking-tight">{viewingRecord.patientName || 'Bệnh nhân'}</h4>
                         <p className="text-sm text-slate-500 font-bold tracking-widest uppercase opacity-60">Hồ sơ: {viewingRecord.id}</p>
                       </div>
                     </div>
@@ -328,7 +328,7 @@ export default function Scheduling() {
                          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] px-1">1. Triệu chứng & Chẩn đoán</p>
                          <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 shadow-inner">
                             <div className="space-y-2">
-                               <p className="text-[10px] font-black text-slate-400 uppercase">Triệu chứng lâm sàng</p>
+                               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Triệu chứng lâm sàng</p>
                                <div className="flex flex-wrap gap-2">
                                   {viewingRecord.symptoms?.map((s, idx) => (
                                     <span key={idx} className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm">{s}</span>
@@ -337,7 +337,7 @@ export default function Scheduling() {
                             </div>
                             <div className="w-full h-px bg-slate-200/50" />
                             <div className="space-y-1">
-                               <p className="text-[10px] font-black text-slate-400 uppercase">Chẩn đoán y khoa</p>
+                               <p className="text-[10px] font-extrabold text-slate-400 uppercase">Chẩn đoán y khoa</p>
                                <p className="text-sm font-bold text-slate-800 leading-relaxed">{viewingRecord.diagnosis}</p>
                             </div>
                          </div>
@@ -349,7 +349,7 @@ export default function Scheduling() {
                             <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                                <div className="flex items-center gap-2">
                                   <ClipboardList size={14} className="text-primary" />
-                                  <span className="text-[10px] font-black uppercase text-slate-500">Đơn thuốc chi tiết</span>
+                                  <span className="text-[10px] font-extrabold uppercase text-slate-500">Đơn thuốc chi tiết</span>
                                </div>
                                <span className="text-[10px] font-bold text-slate-400">{viewingRecord.date}</span>
                             </div>
@@ -358,11 +358,11 @@ export default function Scheduling() {
                                 <div key={i} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
                                    <div className="flex justify-between items-start">
                                       <div>
-                                         <h5 className="text-sm font-black text-slate-800">{med.name}</h5>
+                                         <h5 className="text-sm font-extrabold text-slate-800">{med.name}</h5>
                                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{med.unit} | {med.duration}</p>
                                       </div>
                                       <div className="text-right">
-                                         <p className="text-xs font-black text-primary">SL: {med.quantity}</p>
+                                         <p className="text-xs font-extrabold text-primary">SL: {med.quantity}</p>
                                          <p className="text-[10px] text-slate-400 font-medium">~ {(med.price * med.quantity).toLocaleString()}đ</p>
                                       </div>
                                    </div>
@@ -390,20 +390,20 @@ export default function Scheduling() {
                             <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
                                <div>
                                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Tổng tiền thuốc</p>
-                                  <p className="text-lg font-black text-primary">
+                                  <p className="text-lg font-extrabold text-primary">
                                      {viewingRecord.results.medications.reduce((sum, m) => sum + (m.price * m.quantity), 0).toLocaleString()}đ
                                   </p>
                                </div>
                                <div className="text-right">
                                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Người cấp</p>
-                                  <p className="text-xs font-black">{viewingRecord.doctor}</p>
+                                  <p className="text-xs font-extrabold">{viewingRecord.doctor}</p>
                                </div>
                             </div>
                          </div>
 
                          {viewingRecord.results.prescriptionNotes && (
                            <div className="p-5 bg-orange-50 border border-orange-100 rounded-3xl space-y-3">
-                              <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest flex items-center gap-2">
+                              <p className="text-[10px] font-extrabold text-orange-600 uppercase tracking-widest flex items-center gap-2">
                                  <AlertCircle size={14} /> Danh sách đề nghị từ bác sĩ
                               </p>
                               <ul className="space-y-2">
@@ -419,7 +419,7 @@ export default function Scheduling() {
                          
                          {viewingRecord.results.generalUsageInstructions && (
                            <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-3xl space-y-3">
-                              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                              <p className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest flex items-center gap-2">
                                  <Activity size={14} /> Hướng dẫn sử dụng chi tiết
                               </p>
                               <ul className="space-y-2">
@@ -444,7 +444,7 @@ export default function Scheduling() {
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs font-bold text-slate-700">{test.name}</span>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs font-black text-slate-900">{test.value}</span>
+                                    <span className="text-xs font-extrabold text-slate-900">{test.value}</span>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase">{test.unit}</span>
                                   </div>
                                 </div>
@@ -464,7 +464,7 @@ export default function Scheduling() {
                                       <FileText size={18} />
                                    </div>
                                    <div>
-                                      <p className="text-[10px] font-black text-slate-400 uppercase">{img.type}</p>
+                                      <p className="text-[10px] font-extrabold text-slate-400 uppercase">{img.type}</p>
                                       <p className="text-xs font-bold text-slate-800">{img.region}</p>
                                    </div>
                                 </div>
@@ -495,7 +495,7 @@ export default function Scheduling() {
                   className="space-y-6"
                 >
                   <div className="flex items-center justify-between px-2">
-                    <h3 className="font-black text-slate-800 flex items-center gap-2">
+                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2">
                       <Clock size={20} className="text-primary" /> Lịch hẹn đang chờ ({appointments.filter(a => a.status === 'PENDING').length})
                     </h3>
                     <div className="flex gap-2">
@@ -517,12 +517,12 @@ export default function Scheduling() {
                               <UserIcon size={28} />
                             </div>
                             <div className="space-y-1">
-                              <h4 className="text-lg font-black text-slate-900">{app.patientName}</h4>
+                              <h4 className="text-lg font-extrabold text-slate-900">{app.patientName}</h4>
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">{app.time} • {app.dept}</p>
                             </div>
                           </div>
                           <div className={cn(
-                            "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter",
+                            "px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-tighter",
                             app.status === 'PENDING' ? "bg-orange-50 text-orange-600" :
                             app.status === 'ACCEPTED' ? "bg-green-50 text-green-600" :
                             "bg-red-50 text-red-600"
@@ -601,7 +601,7 @@ export default function Scheduling() {
                   <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[2rem] flex items-center justify-center mx-auto mb-4">
                     <X size={40} />
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900">Từ chối lịch hẹn</h3>
+                  <h3 className="text-2xl font-extrabold text-slate-900">Từ chối lịch hẹn</h3>
                   <p className="text-sm text-slate-500">Vui lòng cung cấp lý do để quản lý có thể sắp xếp lại.</p>
                 </div>
 
@@ -671,7 +671,7 @@ export default function Scheduling() {
                       <UserIcon size={24} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-slate-900">Hồ sơ: {viewingRecord.patientName || 'Nguyễn Văn A'}</h3>
+                      <h3 className="text-xl font-extrabold text-slate-900">Hồ sơ: {viewingRecord.patientName || 'Nguyễn Văn A'}</h3>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Mã BN: {viewingRecord.id}</p>
                     </div>
                   </div>
@@ -682,7 +682,7 @@ export default function Scheduling() {
                 
                 <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
                   <div className="space-y-6">
-                    <h4 className="flex items-center gap-2 font-black text-slate-800 text-lg">
+                    <h4 className="flex items-center gap-2 font-extrabold text-slate-800 text-lg">
                       <Sparkles size={20} className="text-primary" /> Tóm tắt triệu chứng
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -700,7 +700,7 @@ export default function Scheduling() {
                       <div className="p-6 bg-primary/5 rounded-3xl border border-primary/20 space-y-4">
                         <p className="text-[10px] font-bold text-primary uppercase tracking-widest leading-none">Dự đoán sơ bộ</p>
                         <div className="space-y-1">
-                          <p className="text-2xl font-black text-slate-900 tracking-tight">Trào ngược dạ dày thực quản</p>
+                          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">Trào ngược dạ dày thực quản</p>
                           <p className="text-[10px] text-slate-400 font-bold">ĐỘ TIN CẬY: <span className="text-primary italic">92%</span></p>
                         </div>
                         <div className="p-4 bg-white/50 rounded-2xl border border-primary/10">
@@ -713,7 +713,7 @@ export default function Scheduling() {
                   </div>
 
                   <div className="space-y-6">
-                     <h4 className="flex items-center gap-2 font-black text-slate-800 text-lg">
+                     <h4 className="flex items-center gap-2 font-extrabold text-slate-800 text-lg">
                       <ClipboardList size={20} className="text-emerald-500" /> Kết quả lâm sàng gần nhất
                     </h4>
                     <div className="space-y-4">
@@ -721,10 +721,10 @@ export default function Scheduling() {
                          <div className="flex justify-between items-start">
                             <div className="space-y-1">
                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-md uppercase border border-emerald-100 tracking-tighter">Visit BN-2024</span>
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest opacity-50">11/05/2024</span>
+                                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-extrabold rounded-md uppercase border border-emerald-100 tracking-tighter">Visit BN-2024</span>
+                                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest opacity-50">11/05/2024</span>
                                </div>
-                               <p className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-primary transition-colors">Rối loạn tiêu hóa cấp</p>
+                               <p className="text-2xl font-extrabold text-slate-800 tracking-tight group-hover:text-primary transition-colors">Rối loạn tiêu hóa cấp</p>
                             </div>
                             <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 group-hover:bg-primary/10 group-hover:text-primary transition-all">
                                <ChevronRight size={24} />
@@ -776,7 +776,7 @@ export default function Scheduling() {
                       <ClipboardList size={24} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-slate-900">{editingRecordId ? 'Chỉnh sửa hồ sơ' : 'Tạo hồ sơ bệnh án mới'}</h3>
+                      <h3 className="text-xl font-extrabold text-slate-900">{editingRecordId ? 'Chỉnh sửa hồ sơ' : 'Tạo hồ sơ bệnh án mới'}</h3>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Chuyên môn bác sĩ</p>
                     </div>
                   </div>
@@ -1062,7 +1062,7 @@ export default function Scheduling() {
                   <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center mx-auto mb-4">
                     <Calendar size={40} />
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900">Tạo lịch hẹn mới</h3>
+                  <h3 className="text-2xl font-extrabold text-slate-900">Tạo lịch hẹn mới</h3>
                   <p className="text-sm text-slate-500">Chủ động sắp xếp lịch khám cho bệnh nhân.</p>
                 </div>
 
@@ -1264,7 +1264,7 @@ export default function Scheduling() {
                     <Ban size={24} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-red-900">Lịch hẹn bị từ chối</h4>
+                    <h4 className="text-sm font-extrabold text-red-900">Lịch hẹn bị từ chối</h4>
                     <p className="text-xs text-red-700 font-medium">Lý do: <span className="font-bold">{patientAppointment.cancelReason || 'Bác sĩ bận việc đột xuất'}</span></p>
                   </div>
                 </div>
@@ -1286,7 +1286,7 @@ export default function Scheduling() {
                   <Clock size={24} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-orange-900">Đang chờ xác nhận</h4>
+                  <h4 className="text-sm font-extrabold text-orange-900">Đang chờ xác nhận</h4>
                   <p className="text-xs text-orange-700 font-medium">Bác sĩ đang kiểm tra lịch và sẽ phản hồi sớm nhất.</p>
                 </div>
               </div>
@@ -1488,7 +1488,7 @@ export default function Scheduling() {
                             >
                                <span className="text-[10px] font-bold uppercase opacity-60 mb-1">{d.label}</span>
                                <span className="text-sm font-bold">{d.day}</span>
-                               {d.isOff && <span className="absolute -top-1 -right-1 text-[8px] bg-red-500 text-white px-1 rounded-full font-black">OFF</span>}
+                               {d.isOff && <span className="absolute -top-1 -right-1 text-[8px] bg-red-500 text-white px-1 rounded-full font-extrabold">OFF</span>}
                             </button>
                          ))}
                       </div>

@@ -529,7 +529,7 @@ export default function Profile() {
                     onChange={(e) => setPaymentPin(e.target.value)}
                     placeholder="Mã PIN 6 số"
                     className={cn(
-                      "w-full px-4 py-4 bg-slate-50 border rounded-2xl text-center text-xl tracking-[0.5em] font-black focus:ring-2 focus:ring-primary outline-none transition-all",
+                      "w-full px-4 py-4 bg-slate-50 border rounded-2xl text-center text-xl tracking-[0.5em] font-extrabold focus:ring-2 focus:ring-primary outline-none transition-all",
                       paymentPinError ? "border-red-500 animate-shake" : "border-slate-200"
                     )}
                   />

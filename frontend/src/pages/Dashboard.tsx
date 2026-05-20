@@ -1,18 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { 
-  Activity, 
-  CalendarDays, 
-  Pill, 
+import {
+  Activity,
+  CalendarDays,
+  Pill,
   Droplet,
   AlertTriangle,
   ChevronRight,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Stethoscope,
+  TrendingUp,
+  Heart,
 } from 'lucide-react';
 import { dataService } from '../services/dataService';
 import { cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
+
+interface StatCardProps {
+  icon: React.ElementType;
+  iconColor: string;
+  iconBg: string;
+  label: string;
+  value: string;
+  trend?: string;
+}
+
+function StatCard({ icon: Icon, iconColor, iconBg, label, value, trend }: StatCardProps) {
+  return (
+    <div className="card p-5 flex items-center gap-4">
+      <div className={cn('w-12 h-12 rounded-2xl grid place-items-center shrink-0', iconBg, iconColor)}>
+        <Icon size={22} strokeWidth={2} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow mb-1">{label}</p>
+        <p className="text-xl font-bold text-slate-900 truncate leading-tight">{value}</p>
+        {trend && (
+          <p className="text-[11px] text-emerald-600 font-medium mt-0.5 flex items-center gap-0.5">
+            <TrendingUp size={11} /> {trend}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -35,155 +66,279 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh] flex-col space-y-4">
-        <Activity size={48} className="text-slate-300" />
-        <h2 className="text-xl font-bold text-slate-800">Chưa có dữ liệu tổng quan</h2>
-        <p className="text-slate-500">Hồ sơ sức khỏe của bạn sẽ được cập nhật sau lần khám đầu tiên.</p>
+      <div className="card max-w-md mx-auto p-10 text-center mt-12">
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-100 grid place-items-center text-slate-400 mb-4">
+          <Activity size={26} />
+        </div>
+        <h2 className="text-lg font-bold text-slate-900 mb-2">Chưa có dữ liệu tổng quan</h2>
+        <p className="text-sm text-slate-500">
+          Hồ sơ sức khỏe của bạn sẽ được cập nhật sau lần khám đầu tiên.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Tổng quan Sức khỏe</h2>
-        <p className="text-slate-500 text-sm">Cập nhật nhanh tình trạng y tế và các lịch trình sắp tới của bạn.</p>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="max-w-7xl mx-auto space-y-8"
+    >
+      {/* ─── Header ─────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p className="eyebrow mb-1.5">Bảng điều khiển</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+            Tổng quan sức khỏe
+          </h1>
+          <p className="text-sm text-slate-500 mt-1.5">
+            Cập nhật nhanh tình trạng y tế và lịch trình sắp tới của bạn.
+          </p>
+        </div>
+        <Link to="/scheduling" className="btn-primary">
+          <CalendarDays size={16} />
+          Đặt lịch khám
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center">
-            <Droplet size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nhóm máu</p>
-            <p className="text-2xl font-black text-slate-900">{dashboardData.bloodType || 'Chưa rõ'}</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4 lg:col-span-3">
-          <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center">
-            <AlertTriangle size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Dị ứng ghi nhận</p>
-            <p className="text-lg font-bold text-slate-900 truncate">{dashboardData.allergies || 'Không có ghi nhận'}</p>
-          </div>
-        </div>
+      {/* ─── Stat cards ────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={Droplet}
+          iconColor="text-rose-600"
+          iconBg="bg-rose-50"
+          label="Nhóm máu"
+          value={dashboardData.bloodType || 'Chưa rõ'}
+        />
+        <StatCard
+          icon={Heart}
+          iconColor="text-primary"
+          iconBg="bg-sky-50"
+          label="Trạng thái"
+          value="Khỏe mạnh"
+          trend="ổn định"
+        />
+        <StatCard
+          icon={CalendarDays}
+          iconColor="text-teal-600"
+          iconBg="bg-teal-50"
+          label="Lịch sắp tới"
+          value={`${dashboardData.appointments?.length || 0} lịch`}
+        />
+        <StatCard
+          icon={Pill}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+          label="Đơn thuốc đang dùng"
+          value={`${dashboardData.prescriptions?.length || 0} đơn`}
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* ─── Allergies banner ──────────────────────────── */}
+      {dashboardData.allergies && dashboardData.allergies !== 'Không' && (
+        <div className="card-flat p-5 bg-amber-50/60 border-amber-200/70 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 grid place-items-center shrink-0">
+            <AlertTriangle size={18} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-900">Dị ứng đã ghi nhận</p>
+            <p className="text-sm text-amber-800/80 mt-0.5">{dashboardData.allergies}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Main grid: appointments + labs / prescriptions ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Lịch khám */}
-          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                <CalendarDays className="text-primary" size={24} /> Lịch khám sắp tới
-              </h3>
-              <Link to="/scheduling" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+          {/* Upcoming appointments */}
+          <section className="card p-6 sm:p-7">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-sky-50 text-primary grid place-items-center">
+                  <CalendarDays size={18} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Lịch khám sắp tới</h3>
+              </div>
+              <Link
+                to="/scheduling"
+                className="text-xs font-semibold text-primary hover:text-primary-dark flex items-center gap-0.5"
+              >
                 Xem tất cả <ChevronRight size={14} />
               </Link>
             </div>
-            
-            <div className="space-y-4">
+
+            <div className="space-y-3">
               {dashboardData.appointments?.length > 0 ? (
                 dashboardData.appointments.map((appt: any) => (
-                  <div key={appt.id} className="p-5 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-primary/30 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-primary shrink-0">
-                        <span className="text-[10px] font-black uppercase leading-none">{new Date(appt.date).toLocaleString('vi-VN', { month: 'short' })}</span>
-                        <span className="text-lg font-black leading-none mt-1">{new Date(appt.date).getDate()}</span>
+                  <div
+                    key={appt.id}
+                    className="group flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl border border-slate-200/70 bg-white hover:border-primary/40 hover:shadow-soft transition-all"
+                  >
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      {/* Date block */}
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-50 to-teal-50 border border-sky-100/70 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-[10px] font-bold uppercase text-primary tracking-wider leading-none">
+                          {new Date(appt.date).toLocaleString('vi-VN', { month: 'short' })}
+                        </span>
+                        <span className="text-xl font-extrabold text-slate-900 mt-0.5">
+                          {new Date(appt.date).getDate()}
+                        </span>
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-800 leading-tight">{appt.reason}</p>
-                        <p className="text-xs font-medium text-slate-500 mt-1 flex items-center gap-1">
-                          <Clock size={12} /> {new Date(appt.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{appt.reason}</p>
+                        <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-slate-500">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock size={12} />
+                            {new Date(appt.date).toLocaleTimeString('vi-VN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                          {appt.department && (
+                            <span className="inline-flex items-center gap-1">
+                              <Stethoscope size={12} /> {appt.department}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <span className={cn(
-                      "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block text-center whitespace-nowrap shrink-0",
-                      appt.status === 'CONFIRMED' ? "bg-emerald-100 text-emerald-600" : "bg-orange-100 text-orange-600"
-                    )}>
+                    <span
+                      className={cn(
+                        appt.status === 'CONFIRMED'
+                          ? 'pill-success'
+                          : appt.status === 'COMPLETED'
+                          ? 'pill-primary'
+                          : appt.status === 'CANCELLED'
+                          ? 'pill-danger'
+                          : 'pill-warning',
+                      )}
+                    >
                       {appt.status}
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-500 italic">Không có lịch khám nào sắp tới.</p>
+                <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-sm text-slate-500">Không có lịch khám nào sắp tới.</p>
+                </div>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* Kết quả xét nghiệm */}
-          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                <Activity className="text-primary" size={24} /> Kết quả xét nghiệm mới
-              </h3>
-              <Link to="/lab-results" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+          {/* Lab results */}
+          <section className="card p-6 sm:p-7">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 grid place-items-center">
+                  <Activity size={18} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Kết quả xét nghiệm gần đây</h3>
+              </div>
+              <Link
+                to="/lab-results"
+                className="text-xs font-semibold text-primary hover:text-primary-dark flex items-center gap-0.5"
+              >
                 Xem tất cả <ChevronRight size={14} />
               </Link>
             </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {dashboardData.labResults?.length > 0 ? (
-                dashboardData.labResults.map((lab: any) => (
-                  <div key={lab.id} className="p-5 rounded-2xl border border-slate-100 hover:border-primary/30 transition-all group">
-                    <p className="text-sm font-bold text-slate-800 mb-2 group-hover:text-primary transition-colors">{lab.testName}</p>
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Kết quả</p>
-                        <p className="text-lg font-black text-slate-900">{lab.resultValue}</p>
-                      </div>
-                      {lab.status === 'COMPLETED' && <CheckCircle2 size={16} className="text-emerald-500" />}
+
+            {dashboardData.labResults?.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {dashboardData.labResults.map((lab: any) => (
+                  <div
+                    key={lab.id}
+                    className="p-4 rounded-2xl border border-slate-200/70 hover:border-primary/40 hover:bg-slate-50/50 transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <p className="text-sm font-semibold text-slate-900 leading-snug">
+                        {lab.testName}
+                      </p>
+                      {lab.status === 'COMPLETED' && (
+                        <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                      )}
                     </div>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-extrabold text-slate-900 tabular-nums">
+                        {lab.resultValue}
+                      </p>
+                      {lab.resultUnit && (
+                        <p className="text-xs text-slate-500 font-medium">{lab.resultUnit}</p>
+                      )}
+                    </div>
+                    {lab.normalRange && (
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Khoảng bình thường: {lab.normalRange}
+                      </p>
+                    )}
                   </div>
-                ))
-              ) : (
-                <div className="col-span-full p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                  <p className="text-sm text-slate-500 italic">Chưa có kết quả xét nghiệm.</p>
-                </div>
-              )}
-            </div>
-          </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200">
+                <p className="text-sm text-slate-500">Chưa có kết quả xét nghiệm.</p>
+              </div>
+            )}
+          </section>
         </div>
 
-        {/* Cột phải: Đơn thuốc */}
+        {/* Right column: prescriptions */}
         <div className="space-y-6">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 shadow-xl p-8 text-white relative overflow-hidden h-full">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
-            
-            <h3 className="text-xl font-black mb-6 flex items-center gap-2 relative z-10">
-              <Pill className="text-primary" size={24} /> Đơn thuốc hiện tại
-            </h3>
-            
-            <div className="space-y-4 relative z-10">
+          <section className="card p-6 sm:p-7 lg:sticky lg:top-4">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 grid place-items-center">
+                <Pill size={18} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Đơn thuốc hiện tại</h3>
+            </div>
+
+            <div className="space-y-3">
               {dashboardData.prescriptions?.length > 0 ? (
                 dashboardData.prescriptions.map((presc: any) => (
-                  <div key={presc.id} className="p-4 bg-white/10 rounded-2xl border border-white/10 hover:bg-white/20 transition-all">
-                    <p className="font-bold text-lg mb-1 tracking-tight">{presc.medicationName}</p>
-                    <div className="flex justify-between text-sm text-white/70 font-medium">
+                  <div
+                    key={presc.id}
+                    className="p-4 rounded-2xl border border-slate-200/70 hover:border-amber-300 hover:bg-amber-50/30 transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="text-sm font-semibold text-slate-900 leading-snug">
+                        {presc.medicationName}
+                      </p>
+                      {presc.duration && (
+                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md shrink-0">
+                          {presc.duration} ngày
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
                       <span>{presc.dosage}</span>
+                      <span className="text-slate-400">·</span>
                       <span>{presc.frequency}</span>
                     </div>
+                    {presc.instructions && (
+                      <p className="text-[11px] text-slate-500 mt-2 italic line-clamp-2">
+                        {presc.instructions}
+                      </p>
+                    )}
                   </div>
                 ))
               ) : (
-                <div className="p-6 bg-white/5 rounded-2xl border border-white/5 text-center mt-4">
-                  <p className="text-sm text-white/50 italic">Không có đơn thuốc nào đang dùng.</p>
+                <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200">
+                  <Pill size={20} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-sm text-slate-500">Không có đơn thuốc đang dùng.</p>
                 </div>
               )}
             </div>
-          </div>
+          </section>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
