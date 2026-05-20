@@ -123,7 +123,7 @@ export default function LabResults() {
     <div className="max-w-5xl mx-auto space-y-8 pb-20 px-4">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
             <FlaskConical className="text-primary" size={32} /> 
             Xử lý Xét nghiệm
           </h2>
@@ -131,12 +131,12 @@ export default function LabResults() {
         </div>
         <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm self-start md:self-auto">
            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
-              <span className="text-[10px] font-black text-slate-400 uppercase leading-none">Chờ</span>
-              <span className="text-lg font-black text-primary leading-none">{orders.filter(o => o.status === 'PENDING').length}</span>
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase leading-none">Chờ</span>
+              <span className="text-lg font-extrabold text-primary leading-none">{orders.filter(o => o.status === 'PENDING').length}</span>
            </div>
            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
-              <span className="text-[10px] font-black text-slate-400 uppercase leading-none">Xong</span>
-              <span className="text-lg font-black text-emerald-500 leading-none">{orders.filter(o => o.status === 'COMPLETED').length}</span>
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase leading-none">Xong</span>
+              <span className="text-lg font-extrabold text-emerald-500 leading-none">{orders.filter(o => o.status === 'COMPLETED').length}</span>
            </div>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default function LabResults() {
         {/* Orders List Component */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <h3 className="text-sm font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <ClipboardList size={16} /> Danh sách yêu cầu
             </h3>
             <div className="relative w-full max-w-xs group">
@@ -181,7 +181,7 @@ export default function LabResults() {
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center font-black transition-all",
+                        "w-10 h-10 rounded-xl flex items-center justify-center font-extrabold transition-all",
                         selectedOrder?.id === order.id ? "bg-white/10 text-white" : "bg-primary/5 text-primary"
                       )}>
                         {order.patientName.charAt(0)}
@@ -195,7 +195,7 @@ export default function LabResults() {
                       </div>
                     </div>
                     {order.urgency === 'URGENT' && (
-                      <span className="bg-rose-500/10 text-rose-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse border border-rose-500/20">Khẩn</span>
+                      <span className="bg-rose-500/10 text-rose-500 text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse border border-rose-500/20">Khẩn</span>
                     )}
                   </div>
                   <div className="mt-3 flex gap-1.5 flex-wrap">
@@ -228,7 +228,7 @@ export default function LabResults() {
                        <User size={24} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-slate-900">{selectedOrder.patientName}</h3>
+                      <h3 className="text-xl font-extrabold text-slate-900">{selectedOrder.patientName}</h3>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedOrder.patientId} • Bác sĩ chỉ định: <span className="text-primary">{selectedOrder.doctorName}</span></p>
                     </div>
                   </div>
@@ -249,7 +249,7 @@ export default function LabResults() {
                               <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center">
                                  <Activity size={16} />
                               </div>
-                              <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">{test.name}</h4>
+                              <h4 className="text-sm font-extrabold text-slate-800 uppercase tracking-widest">{test.name}</h4>
                            </div>
                            <button 
                               onClick={() => handleAddItem(testIdx)}
@@ -262,10 +262,10 @@ export default function LabResults() {
                         <div className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100 space-y-4">
                            {/* Custom List-style Inputs */}
                            <div className="grid grid-cols-12 gap-4 px-4 hidden md:flex items-center">
-                              <div className="col-span-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Chỉ số xét nghiệm</div>
-                              <div className="col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Kết quả</div>
-                              <div className="col-span-1 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Đ.vị</div>
-                              <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-4">Tham chiếu</div>
+                              <div className="col-span-5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Chỉ số xét nghiệm</div>
+                              <div className="col-span-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest text-center">Kết quả</div>
+                              <div className="col-span-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest text-center">Đ.vị</div>
+                              <div className="col-span-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest pl-4">Tham chiếu</div>
                               <div className="col-span-1 border-l-0" />
                            </div>
 
@@ -292,7 +292,7 @@ export default function LabResults() {
                                         placeholder="0.0"
                                         value={item.value}
                                         onChange={(e) => handleUpdateItem(testIdx, itemIdx, 'value', e.target.value)}
-                                        className="w-full px-4 py-2.5 rounded-xl border-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary/20 text-center text-sm font-black text-primary transition-all placeholder:text-slate-300"
+                                        className="w-full px-4 py-2.5 rounded-xl border-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary/20 text-center text-sm font-extrabold text-primary transition-all placeholder:text-slate-300"
                                       />
                                    </div>
                                    <div className="md:col-span-1">
@@ -330,7 +330,7 @@ export default function LabResults() {
 
                    <div className="pt-8 border-t border-slate-100">
                       <div className="space-y-3">
-                         <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                         <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                             <FileText size={16} className="text-primary" /> Kết luận & Ghi chú
                          </h5>
                          <textarea 
@@ -353,7 +353,7 @@ export default function LabResults() {
                    </div>
                    <button 
                      onClick={handleSaveToRecord}
-                     className="px-10 py-4 bg-primary text-slate-900 rounded-2xl text-sm font-black hover:bg-slate-900 hover:text-white transition-all shadow-lg flex items-center gap-3 active:scale-95"
+                     className="px-10 py-4 bg-primary text-slate-900 rounded-2xl text-sm font-extrabold hover:bg-slate-900 hover:text-white transition-all shadow-lg flex items-center gap-3 active:scale-95"
                    >
                       <Save size={20} /> Lưu Kết quả
                    </button>

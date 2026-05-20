@@ -257,7 +257,7 @@ export default function Payment() {
       {/* Header & Patient Info */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Thanh toán & Hóa đơn</h2>
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Thanh toán & Hóa đơn</h2>
           <p className="text-slate-500 text-sm">Quản lý các khoản phí y tế và lịch sử giao dịch một cách an toàn.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -332,7 +332,7 @@ export default function Payment() {
                           <p className="text-xs font-bold text-slate-600">{bill.method === 'CARD' ? 'Thẻ tín dụng' : 'Mã QR'}</p>
                        </div>
                        <div className="text-right">
-                          <p className="text-lg font-black text-slate-800">{bill.totalAmount.toLocaleString('vi-VN')}đ</p>
+                          <p className="text-lg font-extrabold text-slate-800">{bill.totalAmount.toLocaleString('vi-VN')}đ</p>
                           <button 
                             onClick={() => setViewingBill(bill)}
                             className="text-xs font-bold text-primary hover:underline underline-offset-4"
@@ -455,7 +455,7 @@ export default function Payment() {
                               onChange={(e) => setPin(e.target.value)}
                               placeholder="Mã PIN 4 số"
                               className={cn(
-                                "w-full px-4 py-3 bg-white border rounded-xl text-center text-lg tracking-[0.5em] font-black focus:ring-2 focus:ring-primary outline-none transition-all",
+                                "w-full px-4 py-3 bg-white border rounded-xl text-center text-lg tracking-[0.5em] font-extrabold focus:ring-2 focus:ring-primary outline-none transition-all",
                                 showPinError ? "border-red-500 animate-shake" : "border-slate-200"
                               )}
                              />
@@ -517,7 +517,7 @@ export default function Payment() {
                   <div className="h-px bg-slate-100 w-full"></div>
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-slate-800">Tổng cộng</span>
-                    <span className="text-2xl font-black text-primary">{selectedTotal.toLocaleString('vi-VN')}đ</span>
+                    <span className="text-2xl font-extrabold text-primary">{selectedTotal.toLocaleString('vi-VN')}đ</span>
                   </div>
                 </div>
 
@@ -603,7 +603,7 @@ export default function Payment() {
 
                 <div className="pt-4 flex justify-between items-center border-t border-slate-100">
                   <span className="text-lg font-bold text-slate-800">Tổng thanh toán</span>
-                  <span className="text-2xl font-black text-primary">{viewingBill.totalAmount.toLocaleString('vi-VN')}đ</span>
+                  <span className="text-2xl font-extrabold text-primary">{viewingBill.totalAmount.toLocaleString('vi-VN')}đ</span>
                 </div>
 
                 <button 

@@ -1,3 +1,4 @@
+import { Sparkles, User } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface ChatMessageProps {
@@ -6,19 +7,25 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ role, text }: ChatMessageProps) {
+  const isUser = role === 'user';
   return (
-    <div
-      className={cn(
-        'flex items-end gap-3 max-w-[85%]',
-        role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto',
-      )}
-    >
+    <div className={cn('flex gap-2 items-end', isUser ? 'flex-row-reverse' : 'flex-row')}>
       <div
         className={cn(
-          'p-3 rounded-2xl text-xs leading-relaxed',
-          role === 'user'
-            ? 'bg-blue-600 text-white rounded-br-none'
-            : 'bg-slate-800 text-slate-100 rounded-bl-none border-l-2 border-primary',
+          'w-7 h-7 rounded-full grid place-items-center shrink-0 shadow-sm',
+          isUser
+            ? 'bg-primary text-white'
+            : 'bg-gradient-to-br from-sky-100 to-teal-100 text-primary border border-sky-200/60',
+        )}
+      >
+        {isUser ? <User size={13} /> : <Sparkles size={13} />}
+      </div>
+      <div
+        className={cn(
+          'max-w-[78%] px-3.5 py-2.5 text-[13px] leading-relaxed',
+          isUser
+            ? 'bg-primary text-white rounded-2xl rounded-br-md'
+            : 'bg-white text-slate-800 rounded-2xl rounded-bl-md border border-slate-200 shadow-sm',
         )}
       >
         {text}

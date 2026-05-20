@@ -87,7 +87,8 @@
     box-shadow: var(--shadow-soft);
   }
   .card-interactive {
-    @apply card transition-all duration-300;
+    @apply bg-white border border-slate-200/70 rounded-3xl transition-all duration-300;
+    box-shadow: var(--shadow-card);
   }
   .card-interactive:hover {
     transform: translateY(-2px);
@@ -103,15 +104,30 @@
            focus-visible:ring-primary/40;
   }
   .btn-primary {
-    @apply btn bg-primary text-white;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-sm font-semibold rounded-xl transition-all duration-200
+           bg-primary text-white
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-primary/40;
     box-shadow: 0 1px 2px rgb(2 132 199 / 0.18), 0 4px 12px rgb(2 132 199 / 0.18);
   }
   .btn-primary:hover { @apply bg-primary-dark; }
   .btn-secondary {
-    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-sm font-semibold rounded-xl transition-all duration-200
+           bg-white text-slate-700 border border-slate-200 hover:bg-slate-50
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-primary/40;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-slate-600 hover:bg-slate-100;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-sm font-semibold rounded-xl transition-all duration-200
+           bg-transparent text-slate-600 hover:bg-slate-100
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-primary/40;
   }
 
   /* ─── Form fields ───────────────────────────────── */
@@ -131,12 +147,30 @@
     @apply inline-flex items-center gap-1.5 px-2.5 py-0.5
            text-xs font-semibold rounded-full border;
   }
-  .pill-primary  { @apply pill bg-sky-50 text-sky-700 border-sky-200; }
-  .pill-success  { @apply pill bg-emerald-50 text-emerald-700 border-emerald-200; }
-  .pill-warning  { @apply pill bg-amber-50 text-amber-700 border-amber-200; }
-  .pill-danger   { @apply pill bg-rose-50 text-rose-700 border-rose-200; }
-  .pill-neutral  { @apply pill bg-slate-50 text-slate-700 border-slate-200; }
-  .pill-accent   { @apply pill bg-teal-50 text-teal-700 border-teal-200; }
+  .pill-primary {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-sky-50 text-sky-700 border-sky-200;
+  }
+  .pill-success {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-emerald-50 text-emerald-700 border-emerald-200;
+  }
+  .pill-warning {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-amber-50 text-amber-700 border-amber-200;
+  }
+  .pill-danger {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-rose-50 text-rose-700 border-rose-200;
+  }
+  .pill-neutral {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-slate-50 text-slate-700 border-slate-200;
+  }
+  .pill-accent {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-teal-50 text-teal-700 border-teal-200;
+  }
 
   /* ─── Section labels ────────────────────────────── */
   .eyebrow {
