@@ -62,12 +62,12 @@ export class AuthService implements IAuthService {
     const user = await this.findUserByIdentifier({ email: input.email, phoneNumber: input.phoneNumber });
 
     if (!user || !user.passwordHash) {
-      throw new ApiError(401, 'Invalid credentials');
+      throw new ApiError(401, 'Số điện thoại hoặc mật khẩu không đúng');
     }
 
     const isValid = await comparePassword(input.password, user.passwordHash);
     if (!isValid) {
-      throw new ApiError(401, 'Invalid credentials');
+      throw new ApiError(401, 'Số điện thoại hoặc mật khẩu không đúng');
     }
 
     const token = this.createToken({ id: user.id, role: user.role });
@@ -103,12 +103,12 @@ export class AuthService implements IAuthService {
     const email = input.email?.trim() || `${input.phoneNumber.replace(/\D/g, '')}@patienthub.local`;
     const existingByEmail = await this.userRepository.findByEmail(email);
     if (existingByEmail) {
-      throw new ApiError(400, 'Email already exists');
+      throw new ApiError(400, 'Email đã được sử dụng');
     }
 
     const existingByPhone = await this.userRepository.findByPhoneNumber(input.phoneNumber);
     if (existingByPhone) {
-      throw new ApiError(400, 'Phone number already registered');
+      throw new ApiError(400, 'Số điện thoại đã được đăng ký');
     }
 
     const passwordHash = await hashPassword(input.password);

@@ -13,6 +13,8 @@ import {
   Sparkles,
   ShieldCheck,
   Activity,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -32,21 +34,25 @@ const ROLE_OPTIONS: RoleOption[] = [
 export default function Login() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<UserRole>(UserRole.PATIENT);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || !password) return;
+    // Defensive: trim accidental leading/trailing whitespace from autofill / paste.
+    const trimmedPhone = phone.trim();
+    const trimmedPassword = password.trim();
+    if (!trimmedPhone || !trimmedPassword) return;
 
     setIsLoading(true);
     setError('');
 
     try {
       const response = await authService.login({
-        phoneNumber: phone,
-        password,
+        phoneNumber: trimmedPhone,
+        password: trimmedPassword,
       });
 
       if (response.success && response.token) {
@@ -217,14 +223,26 @@ export default function Login() {
               <label className="label">
                 <Lock size={14} /> Mật khẩu
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="input"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="input pr-12"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <button
