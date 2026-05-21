@@ -158,8 +158,13 @@ docker compose --profile tunnel up -d tunnel
 ```
 
 Lấy URL công khai:
+
 ```bash
+# Linux / macOS:
 docker compose logs tunnel | grep trycloudflare.com
+
+# Windows PowerShell:
+docker compose logs tunnel | Select-String "trycloudflare.com"
 ```
 
 Kết quả ví dụ:
@@ -323,7 +328,10 @@ docker compose up -d backend
 2. URL đã được paste vào ô Webhook trên PayOS dashboard và click validate (icon 🔄)
 3. Xem log:
    ```bash
+   # Linux / macOS:
    docker compose logs -f backend | grep payos
+   # Windows PowerShell:
+   docker compose logs -f backend | Select-String "payos"
    ```
 4. Nếu webhook chậm, frontend có cơ chế polling fallback — refresh trang `/payment` sau ~10 giây sẽ thấy trạng thái đã cập nhật.
 </details>
