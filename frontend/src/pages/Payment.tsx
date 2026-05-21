@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  CreditCard, 
-  Wallet, 
-  Smartphone, 
-  ShieldCheck, 
-  CheckCircle2, 
+import {
+  CreditCard,
+  Wallet,
+  Smartphone,
+  ShieldCheck,
+  CheckCircle2,
   AlertCircle,
   ArrowRight,
   Receipt,
@@ -16,7 +16,10 @@ import {
   User,
   Calendar,
   ChevronRight,
-  Lock
+  Lock,
+  Zap,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 
 import { ExamStatus, type MedicalExam, type PaymentHistoryItem, type PaymentMethodType } from '../types';
@@ -35,6 +38,70 @@ export default function Payment() {
   const [viewingBill, setViewingBill] = useState<PaymentHistoryItem | null>(null);
   const [showQRPortal, setShowQRPortal] = useState(false);
   const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
+
+  // ─── PayOS integration state ───────────────────────
+  const [apiPendingPayments, setApiPendingPayments] = useState<any[]>([]);
+  const [payosEnabled, setPayosEnabled] = useState(false);
+  const [payosLoadingId, setPayosLoadingId] = useState<string | null>(null);
+  const [returnStatus, setReturnStatus] = useState<'success' | 'cancel' | null>(null);
+
+  // Handle ?status=success/cancel&pid=... when user returns from PayOS
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const pid = params.get('pid');
+    if (status === 'success' || status === 'cancel') {
+      setReturnStatus(status);
+      // Poll for confirmed status so we don't show "success" before webhook lands
+      if (pid && status === 'success') {
+        (async () => {
+          for (let i = 0; i < 6; i++) {
+            try {
+              const r = await dataService.checkPayOSStatus(pid);
+              if (r.localStatus === 'COMPLETED') break;
+            } catch {}
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+          await refreshPendingPayments();
+        })();
+      }
+      // Clean the URL so a refresh doesn't re-trigger
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const refreshPendingPayments = async () => {
+    try {
+      const all = await dataService.getPayments();
+      setApiPendingPayments(all.filter((p: any) => p.status === 'PENDING' || p.status === 'PROCESSING'));
+    } catch (e) {
+      console.warn('Failed to refresh payments', e);
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      const [{ enabled }, all] = await Promise.all([
+        dataService.getPayOSConfig().catch(() => ({ enabled: false })),
+        dataService.getPayments().catch(() => []),
+      ]);
+      setPayosEnabled(enabled);
+      setApiPendingPayments(all.filter((p: any) => p.status === 'PENDING' || p.status === 'PROCESSING'));
+    })();
+  }, []);
+
+  const handlePayWithPayOS = async (paymentId: string) => {
+    setPayosLoadingId(paymentId);
+    try {
+      const { checkoutUrl } = await dataService.createPayOSLink(paymentId);
+      // Redirect the whole window to PayOS. They'll redirect us back to
+      // /payment?status=success|cancel&pid=... when done.
+      window.location.href = checkoutUrl;
+    } catch (err: any) {
+      alert(err.message || 'Không tạo được liên kết PayOS. Vui lòng thử lại.');
+      setPayosLoadingId(null);
+    }
+  };
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -298,6 +365,122 @@ export default function Payment() {
           </div>
         ))}
       </div>
+
+      {/* ─── PayOS return status banner ─────────────────────── */}
+      <AnimatePresence>
+        {returnStatus === 'success' && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="card-flat p-5 bg-emerald-50/70 border-emerald-200 flex items-start gap-4"
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 grid place-items-center shrink-0">
+              <CheckCircle2 size={20} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-900">Thanh toán thành công qua PayOS</p>
+              <p className="text-sm text-emerald-800/80 mt-0.5">
+                Cảm ơn bạn! Hóa đơn đã được cập nhật trong lịch sử.
+              </p>
+            </div>
+            <button onClick={() => setReturnStatus(null)} className="text-emerald-700 hover:text-emerald-900">
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+        {returnStatus === 'cancel' && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="card-flat p-5 bg-amber-50/70 border-amber-200 flex items-start gap-4"
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 grid place-items-center shrink-0">
+              <AlertCircle size={20} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">Thanh toán đã bị hủy</p>
+              <p className="text-sm text-amber-800/80 mt-0.5">
+                Không sao — bạn có thể thử lại bất cứ lúc nào.
+              </p>
+            </div>
+            <button onClick={() => setReturnStatus(null)} className="text-amber-700 hover:text-amber-900">
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── PayOS quick-pay section ────────────────────────── */}
+      {payosEnabled && apiPendingPayments.length > 0 && !showHistory && (
+        <section className="card p-6 sm:p-7">
+          <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-teal-500 text-white grid place-items-center shadow-md shadow-sky-500/20">
+                <Zap size={18} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Thanh toán nhanh qua PayOS</h3>
+                <p className="text-xs text-slate-500">Quét QR hoặc chuyển khoản — xác nhận tự động qua webhook.</p>
+              </div>
+            </div>
+            <span className="pill-primary">
+              <Zap size={11} /> {apiPendingPayments.length} hóa đơn chờ
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {apiPendingPayments.map((p) => (
+              <div
+                key={p.id}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-200/70 hover:border-primary/40 hover:bg-slate-50/50 transition-all"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      {p.description || 'Dịch vụ y tế Mediflow'}
+                    </p>
+                    {p.status === 'PROCESSING' && (
+                      <span className="pill-warning text-[10px]">
+                        <Loader2 size={10} className="animate-spin" /> Đang xử lý
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 font-mono">#{p.id.slice(-8).toUpperCase()}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <p className="text-xl font-extrabold text-slate-900 tabular-nums">
+                    {(p.amount || 0).toLocaleString('vi-VN')}đ
+                  </p>
+                  <button
+                    onClick={() => handlePayWithPayOS(p.id)}
+                    disabled={payosLoadingId === p.id}
+                    className="btn-primary"
+                  >
+                    {payosLoadingId === p.id ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Đang tạo...
+                      </>
+                    ) : (
+                      <>
+                        Thanh toán PayOS
+                        <ExternalLink size={14} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] text-slate-400 mt-4 flex items-center gap-1.5">
+            <ShieldCheck size={12} /> Bạn sẽ được chuyển đến trang thanh toán chính thức của PayOS.
+            Sau khi hoàn tất, bạn sẽ tự động quay lại đây.
+          </p>
+        </section>
+      )}
 
       <AnimatePresence mode="wait">
         {showHistory ? (

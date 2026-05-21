@@ -415,5 +415,43 @@ export const dataService = {
     if (!response.ok) throw new Error('Failed to fetch pending invoices');
     return response.json();
   },
+
+  // ============ PAYOS ============
+  async getPayOSConfig(): Promise<{ enabled: boolean }> {
+    const response = await fetch(`${API_BASE_URL}/payos/config`);
+    if (!response.ok) return { enabled: false };
+    return response.json();
+  },
+
+  async createPayOSLink(paymentId: string): Promise<{
+    checkoutUrl: string;
+    qrCode: string;
+    orderCode: number;
+    paymentLinkId: string;
+    amount: number;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/payos/payments/${paymentId}/link`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || err.error || 'Không tạo được liên kết thanh toán PayOS');
+    }
+    return response.json();
+  },
+
+  async checkPayOSStatus(paymentId: string): Promise<{
+    payosStatus?: string;
+    localStatus: string;
+    paid?: number;
+    remaining?: number;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/payos/payments/${paymentId}/status`, {
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Không kiểm tra được trạng thái thanh toán');
+    return response.json();
+  },
 };
 

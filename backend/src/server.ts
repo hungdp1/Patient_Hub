@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import dataRoutes from './routes/dataRoutes';
 import aiRoutes from './routes/aiRoutes';
+import payosRoutes from './routes/payosRoutes';
 import prisma from './lib/prismaClient';
 import { globalErrorHandler } from './middleware/error';
 import RealTimeServer from './realtime/RealTimeServer';
@@ -55,6 +56,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/payos', payosRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'Backend is running!' });
