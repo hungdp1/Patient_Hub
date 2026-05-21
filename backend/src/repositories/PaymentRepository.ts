@@ -1,5 +1,6 @@
 import prisma from '../lib/prismaClient';
 import { Payment } from '@prisma/client';
+import { publicUserSelect } from '../lib/publicSelects';
 
 export interface IPaymentRepository {
   findByUserId(userId: string): Promise<Payment[]>;
@@ -23,7 +24,7 @@ export class PaymentRepository implements IPaymentRepository {
     return prisma.payment.findMany({
       where: { status: 'PENDING' },
       orderBy: { createdAt: 'desc' },
-      include: { user: true },
+      include: { user: { select: publicUserSelect } },
     });
   }
 }

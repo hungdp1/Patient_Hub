@@ -24,17 +24,29 @@ import {
   CreatePaymentDto,
 } from '../types/dto';
 
+/**
+ * Scope used to filter "list" queries (records, lab results, prescriptions).
+ * - PATIENT: forced to their own user-scope. They never see other patients.
+ * - DOCTOR / ADMIN: can pass an explicit patientId to look up someone's data.
+ */
+export interface PatientScope {
+  /** Filter by Patient.id (preferred when DOCTOR/ADMIN supplies it). */
+  patientId?: string;
+  /** Filter by User.id (used to lock PATIENT queries to themselves). */
+  userId?: string;
+}
+
 export interface IDataService {
   createAppointment(userId: string, data: CreateAppointmentDto): Promise<unknown>;
   getAppointments(userId: string, patientId?: string): Promise<unknown[]>;
   updateAppointment(id: string, data: UpdateAppointmentDto): Promise<unknown>;
-  getLabResults(patientId?: string): Promise<unknown[]>;
+  getLabResults(scope: PatientScope): Promise<unknown[]>;
   createLabResult(userId: string, data: CreateLabResultDto): Promise<unknown>;
   updateLabResult(id: string, data: UpdateLabResultDto): Promise<unknown>;
-  getMedicalRecords(patientId?: string): Promise<unknown[]>;
+  getMedicalRecords(scope: PatientScope): Promise<unknown[]>;
   createMedicalRecord(userId: string, data: CreateMedicalRecordDto): Promise<unknown>;
   updateMedicalRecord(id: string, data: UpdateMedicalRecordDto): Promise<unknown>;
-  getPrescriptions(patientId?: string): Promise<unknown[]>;
+  getPrescriptions(scope: PatientScope): Promise<unknown[]>;
   createPrescription(userId: string, data: CreatePrescriptionDto): Promise<unknown>;
   updatePrescription(id: string, data: UpdatePrescriptionDto): Promise<unknown>;
   getPayments(userId: string): Promise<unknown[]>;
@@ -127,8 +139,8 @@ export class DataService implements IDataService {
     return appointment;
   }
 
-  public async getLabResults(patientId?: string): Promise<unknown[]> {
-    return labResultRepository.findMany({ patientId });
+  public async getLabResults(scope: PatientScope): Promise<unknown[]> {
+    return labResultRepository.findMany(scope);
   }
 
   public async createLabResult(userId: string, data: CreateLabResultDto): Promise<unknown> {
@@ -190,8 +202,8 @@ export class DataService implements IDataService {
     return labResult;
   }
 
-  public async getMedicalRecords(patientId?: string): Promise<unknown[]> {
-    return medicalRecordRepository.findMany({ patientId });
+  public async getMedicalRecords(scope: PatientScope): Promise<unknown[]> {
+    return medicalRecordRepository.findMany(scope);
   }
 
   public async createMedicalRecord(userId: string, data: CreateMedicalRecordDto): Promise<unknown> {
@@ -250,8 +262,8 @@ export class DataService implements IDataService {
     return updatedRecord;
   }
 
-  public async getPrescriptions(patientId?: string): Promise<unknown[]> {
-    return prescriptionRepository.findMany({ patientId });
+  public async getPrescriptions(scope: PatientScope): Promise<unknown[]> {
+    return prescriptionRepository.findMany(scope);
   }
 
   public async createPrescription(userId: string, data: CreatePrescriptionDto): Promise<unknown> {

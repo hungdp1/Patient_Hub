@@ -1,7 +1,25 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/errorHandler';
-import { dataService } from '../services/DataService';
+import { dataService, PatientScope } from '../services/DataService';
+
+/**
+ * Build a PatientScope for an endpoint that returns patient-owned data
+ * (medical records, lab results, prescriptions, appointments).
+ *
+ * - PATIENT  → forced to their own user-scope. Any ?patientId is ignored
+ *              so they can't enumerate other patients.
+ * - DOCTOR / ADMIN / STAFF → may pass ?patientId to look up a specific
+ *              patient; otherwise the scope is empty (returns all — they
+ *              already have wider clinical access via role middleware).
+ */
+function buildPatientScope(req: AuthRequest): PatientScope {
+  const { patientId } = req.query as { patientId?: string };
+  if (req.userRole === 'PATIENT') {
+    return { userId: req.userId };
+  }
+  return patientId ? { patientId } : {};
+}
 import {
   CreateAppointmentDto,
   UpdateAppointmentDto,
@@ -47,7 +65,14 @@ export const getArticles = asyncHandler(async (_req, res: Response) => {
   res.json(articles);
 });
 
-export const getPendingInvoices = asyncHandler(async (_req, res: Response) => {
+export const getPendingInvoices = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // A PATIENT must only see their OWN pending invoices — never a global list.
+  // ADMIN / STAFF can still see everything for billing oversight.
+  if (req.userRole === 'PATIENT') {
+    const all = await dataService.getPayments(req.userId!);
+    res.json((all as any[]).filter((p) => p.status === 'PENDING'));
+    return;
+  }
   const invoices = await dataService.getPendingInvoices();
   res.json(invoices);
 });
@@ -81,8 +106,7 @@ export const updateAppointment = asyncHandler(async (req: AuthRequest, res: Resp
 
 // ============ LAB RESULTS ============
 export const getLabResults = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { patientId } = req.query as { patientId?: string };
-  const results = await dataService.getLabResults(patientId);
+  const results = await dataService.getLabResults(buildPatientScope(req));
   res.json(results);
 });
 
@@ -100,8 +124,7 @@ export const updateLabResult = asyncHandler(async (req: AuthRequest, res: Respon
 
 // ============ MEDICAL RECORDS ============
 export const getMedicalRecords = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { patientId } = req.query as { patientId?: string };
-  const records = await dataService.getMedicalRecords(patientId);
+  const records = await dataService.getMedicalRecords(buildPatientScope(req));
   res.json(records);
 });
 
@@ -119,8 +142,7 @@ export const updateMedicalRecord = asyncHandler(async (req: AuthRequest, res: Re
 
 // ============ PRESCRIPTIONS ============
 export const getPrescriptions = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { patientId } = req.query as { patientId?: string };
-  const prescriptions = await dataService.getPrescriptions(patientId);
+  const prescriptions = await dataService.getPrescriptions(buildPatientScope(req));
   res.json(prescriptions);
 });
 

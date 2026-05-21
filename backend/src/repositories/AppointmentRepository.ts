@@ -1,5 +1,6 @@
 import prisma from '../lib/prismaClient';
 import { Appointment } from '@prisma/client';
+import { doctorPublicInclude, patientPublicInclude } from '../lib/publicSelects';
 
 export interface IAppointmentRepository {
   create(data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appointment>;
@@ -19,8 +20,8 @@ export class AppointmentRepository implements IAppointmentRepository {
     return prisma.appointment.findMany({
       where: filter.patientId ? { patientId: filter.patientId } : { userId: filter.userId },
       include: {
-        patient: true,
-        doctor: { include: { user: true } },
+        patient: { include: patientPublicInclude },
+        doctor: { include: doctorPublicInclude },
       },
       orderBy: { date: 'desc' },
     });
@@ -33,8 +34,8 @@ export class AppointmentRepository implements IAppointmentRepository {
   public async findAll(): Promise<Appointment[]> {
     return prisma.appointment.findMany({
       include: {
-        patient: true,
-        doctor: { include: { user: true } },
+        patient: { include: patientPublicInclude },
+        doctor: { include: doctorPublicInclude },
       },
       orderBy: { date: 'desc' },
     });

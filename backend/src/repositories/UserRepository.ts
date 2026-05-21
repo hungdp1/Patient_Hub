@@ -19,6 +19,7 @@ export interface IUserRepository {
   updateUser(id: string, data: Partial<User>): Promise<User>;
   getPatientDashboard(userId: string): Promise<Patient | null>;
   findManyAll(): Promise<User[]>;
+  findPatientIdByUserId(userId: string): Promise<string | null>;
 }
 
 export class UserRepository implements IUserRepository {
@@ -79,6 +80,19 @@ export class UserRepository implements IUserRepository {
       include: { patient: true, doctor: true, technician: true, staff: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * Quick lookup: given a User.id, return their Patient.id (or null if the
+   * user has no Patient row — e.g. they're a DOCTOR / ADMIN / STAFF).
+   * Used to scope record / payment / lab queries to the logged-in patient.
+   */
+  public async findPatientIdByUserId(userId: string): Promise<string | null> {
+    const patient = await prisma.patient.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    return patient?.id ?? null;
   }
 }
 

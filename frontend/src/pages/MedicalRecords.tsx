@@ -108,30 +108,70 @@ export default function MedicalRecords() {
 
         if (data && data.length > 0) {
           const mappedRecords = data.map((r: any) => {
-            const recordLabs = labData.filter((l:any) => l.recordId === r.id || !l.recordId);
+            // Match labs to this record via `medicalRecordId` (the actual FK
+            // returned by the API). Falling back to "all labs" creates noise.
+            const recordLabs = labData.filter((l: any) => l.medicalRecordId === r.id);
+
+            // Use the joined doctor.user info when available, fall back to a
+            // truncated id only if the backend didn't return the relation.
+            const doctorUser = r.doctor?.user;
+            const doctorName = doctorUser
+              ? `BS. ${doctorUser.firstName ?? ''} ${doctorUser.lastName ?? ''}`.trim()
+              : 'Bác sĩ điều trị';
+
+            const patientUser = r.patient?.user;
+            const patientName = patientUser
+              ? `${patientUser.firstName ?? ''} ${patientUser.lastName ?? ''}`.trim()
+              : 'Bệnh nhân';
+
             return {
               id: r.id,
-              patientName: 'Bệnh nhân ' + (r.patientId || '').substring(0, 4),
-              doctor: 'BS ' + (r.doctorId || '').substring(0, 4),
-              date: new Date(r.createdAt || new Date()).toLocaleDateString('vi-VN'),
+              patientName,
+              doctor: doctorName,
+              department: r.doctor?.department || r.doctor?.specialization || '',
+              date: new Date(r.recordDate || r.createdAt || new Date()).toLocaleDateString('vi-VN'),
               diagnosis: r.diagnosis || 'Chưa có chẩn đoán',
-              symptoms: r.symptoms ? r.symptoms.split(',') : [],
+              symptoms: r.symptoms ? r.symptoms.split(',').map((s: string) => s.trim()) : [],
               summary: r.notes || '',
               billingStatus: 'PAID',
               totalCost: 0,
               results: {
-                medications: r.treatment ? [
-                  { name: r.treatment, purpose: 'Điều trị', quantity: 1, unit: 'liều', dosage: 'Theo toa', duration: 'Theo toa', instructions: '', price: 0, morning: 1, noon:0, afternoon:0, evening:1 }
-                ] : [],
+                medications: r.treatment
+                  ? [
+                      {
+                        name: r.treatment,
+                        purpose: r.diagnosis || 'Điều trị',
+                        quantity: 1,
+                        unit: 'liều',
+                        dosage: 'Theo chỉ định',
+                        duration: 'Theo toa',
+                        instructions: '',
+                        price: 0,
+                        morning: 1,
+                        noon: 0,
+                        afternoon: 0,
+                        evening: 1,
+                      },
+                    ]
+                  : [],
                 prescriptionNotes: r.notes,
-                blood: recordLabs.map((l:any) => ({ name: l.testName, value: l.resultValue || 'N/A', unit: 'N/A', range: 'N/A', status: 'NORMAL', date: new Date(l.date || new Date()).toLocaleDateString('vi-VN') })),
-                urine: [], stool: [], imaging: [], cardiovascular: []
-              }
+                blood: recordLabs.map((l: any) => ({
+                  name: l.testName,
+                  value: l.resultValue ?? 'N/A',
+                  unit: l.resultUnit ?? '',
+                  range: l.normalRange ?? '',
+                  status: 'NORMAL',
+                  date: new Date(l.testDate || l.createdAt || new Date()).toLocaleDateString('vi-VN'),
+                })),
+                urine: [],
+                stool: [],
+                imaging: [],
+                cardiovascular: [],
+              },
             };
           });
           setRecords(mappedRecords);
         } else {
-          // Tự động dùng fallback nếu API rỗng để tránh sập UI
           setRecords([]);
         }
       } catch (err) {
