@@ -1,22 +1,54 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Sparkles } from 'lucide-react';
+import { MessageSquare, X, Sparkles, Stethoscope, BookOpen, FolderHeart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { askMedicalAI } from '../lib/gemini';
+import { askMedicalAI, getAIConfig } from '../lib/gemini';
 import { ChatMessage } from './chat/ChatMessage';
 import { ChatInput } from './chat/ChatInput';
 import { socketService } from '../services/socketService';
 
+// Surface which tools the model invoked so the user can see "where the
+// answer came from" — small pill under the bot message.
+const TOOL_PILLS: Record<string, { label: string; tone: string }> = {
+  recommendDepartment: { label: 'Phân tích triệu chứng', tone: 'bg-rose-50 text-rose-700 border-rose-200' },
+  searchLibrary: { label: 'Tra cứu thư viện', tone: 'bg-sky-50 text-sky-700 border-sky-200' },
+  searchServices: { label: 'Dịch vụ BV', tone: 'bg-violet-50 text-violet-700 border-violet-200' },
+  getMyAppointments: { label: 'Lịch khám của tôi', tone: 'bg-amber-50 text-amber-700 border-amber-200' },
+  getMyLabResults: { label: 'Kết quả XN', tone: 'bg-teal-50 text-teal-700 border-teal-200' },
+  getMyPrescriptions: { label: 'Đơn thuốc', tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  getMyPendingPayments: { label: 'Hóa đơn chờ', tone: 'bg-orange-50 text-orange-700 border-orange-200' },
+};
+
+const QUICK_PROMPTS = [
+  { icon: Stethoscope, label: 'Tôi đau bụng sau khi ăn, nên đi khoa nào?' },
+  { icon: BookOpen, label: 'Omeprazole là thuốc gì?' },
+  { icon: FolderHeart, label: 'Cho tôi xem lịch khám sắp tới' },
+];
+
+interface ChatBubble {
+  role: 'user' | 'bot';
+  text: string;
+  toolsUsed?: string[];
+}
+
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([
+  const [smartMode, setSmartMode] = useState(true);
+  const [messages, setMessages] = useState<ChatBubble[]>([
     {
       role: 'bot',
-      text: 'Xin chào! Tôi là trợ lý AI của Mediflow. Tôi có thể giúp bạn giải đáp thắc mắc về bệnh lý, thuốc hoặc thuật ngữ trong hồ sơ của bạn.',
+      text:
+        'Xin chào! Tôi là trợ lý AI Mediflow. Tôi có thể: (1) phân tích triệu chứng và đề xuất khoa khám, ' +
+        '(2) tra cứu thư viện thuốc/bệnh/dịch vụ, (3) đọc lịch khám - đơn thuốc - hóa đơn của riêng bạn. ' +
+        'Bạn cần hỗ trợ gì hôm nay?',
     },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getAIConfig().then((c) => setSmartMode(c.smart));
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,11 +71,9 @@ export default function Chatbot() {
     };
   }, []);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage = input.trim();
+  const sendMessage = async (raw: string) => {
+    const userMessage = raw.trim();
+    if (!userMessage || isLoading) return;
     setInput('');
     setMessages((prev) => [...prev, { role: 'user', text: userMessage }]);
     setIsLoading(true);
@@ -53,12 +83,17 @@ export default function Chatbot() {
       socket.emit('chat:typing', { userName: 'Bạn', roomId: 'global' });
     }
 
-    const botResponse = await askMedicalAI(userMessage);
+    const result = await askMedicalAI(userMessage);
     setMessages((prev) => [
       ...prev,
-      { role: 'bot', text: botResponse || 'Xin lỗi, tôi không thể trả lời lúc này.' },
+      { role: 'bot', text: result.text, toolsUsed: result.toolsUsed },
     ]);
     setIsLoading(false);
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage(input);
   };
 
   return (
@@ -83,8 +118,8 @@ export default function Chatbot() {
                   <div>
                     <h3 className="font-bold text-[15px] leading-tight">Trợ lý y tế AI</h3>
                     <p className="text-[11px] text-white/80 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                      Sẵn sàng 24/7
+                      <span className={`w-1.5 h-1.5 rounded-full ${smartMode ? 'bg-emerald-300 animate-pulse' : 'bg-amber-300'}`} />
+                      {smartMode ? 'Gemini 2.0 · Sẵn sàng' : 'Chế độ cơ bản (chưa cấu hình Gemini)'}
                     </p>
                   </div>
                 </div>
@@ -101,8 +136,41 @@ export default function Chatbot() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/60 custom-scrollbar">
               {messages.map((msg, i) => (
-                <ChatMessage key={i} role={msg.role} text={msg.text} />
+                <div key={i} className="space-y-1.5">
+                  <ChatMessage role={msg.role} text={msg.text} />
+                  {msg.role === 'bot' && msg.toolsUsed && msg.toolsUsed.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pl-9">
+                      {Array.from(new Set(msg.toolsUsed)).map((t) => {
+                        const pill = TOOL_PILLS[t] || { label: t, tone: 'bg-slate-50 text-slate-600 border-slate-200' };
+                        return (
+                          <span key={t} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${pill.tone}`}>
+                            {pill.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               ))}
+
+              {/* Quick prompt chips — only on first bot greeting */}
+              {messages.length === 1 && !isLoading && (
+                <div className="flex flex-col gap-2 pt-1">
+                  {QUICK_PROMPTS.map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => sendMessage(q.label)}
+                      className="flex items-center gap-2.5 text-left text-xs font-medium text-slate-700 bg-white hover:bg-sky-50 hover:border-sky-200 border border-slate-200 px-3 py-2.5 rounded-2xl transition-colors group"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-teal-500 text-white grid place-items-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                        <q.icon size={14} />
+                      </span>
+                      <span>{q.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {isLoading && (
                 <div className="flex items-center gap-2 text-slate-500 text-xs bg-white border border-slate-200 px-3 py-2 rounded-full w-fit shadow-sm">
                   <span className="flex gap-1">

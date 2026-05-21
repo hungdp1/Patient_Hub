@@ -63,9 +63,12 @@ export async function askMedicalAI(message: string): Promise<string> {
     console.warn('Backend AI API failed, falling back to Gemini:', error);
   }
 
-  // Fallback to Gemini
+  // Fallback to the gemini helper (uses the same backend endpoint, but
+  // wraps the response and returns a structured object — flatten back to a
+  // plain string here so the rest of this file's callers keep working).
   try {
-    return await askMedicalAIBackend(message);
+    const result = await askMedicalAIBackend(message);
+    return result.text;
   } catch (error) {
     console.error('Both AI services failed:', error);
     return 'Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại sau.';
