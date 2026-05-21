@@ -11,7 +11,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   {
     label: 'Trợ lý AI',
-    path: '/',
+    path: '/ai-assistant',
     icon: Sparkles,
     roles: [UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN, UserRole.TECHNICIAN],
   },

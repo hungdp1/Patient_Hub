@@ -9,6 +9,7 @@ import Profile from '../pages/Profile';
 import AdminDashboard from '../pages/AdminDashboard';
 import LabResults from '../pages/LabResults';
 import Login from '../pages/Login';
+import AIAssistant from '../pages/AIAssistant';
 
 export interface AppRoute {
   path: string;
@@ -18,6 +19,7 @@ export interface AppRoute {
 
 export const appRoutes: AppRoute[] = [
   { path: '/login', element: <Login /> },
+  { path: '/ai-assistant', element: <AIAssistant />, protected: true },
   { path: '/dashboard', element: <Dashboard />, protected: true },
   { path: '/scheduling', element: <Scheduling />, protected: true },
   { path: '/services', element: <HospitalServices />, protected: true },
