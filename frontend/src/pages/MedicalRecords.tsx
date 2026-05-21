@@ -1,1154 +1,816 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ClipboardList, 
-  FlaskConical, 
-  Pill, 
-  Activity, 
-  Search, 
-  Calendar, 
-  ChevronRight,
-  Download,
-  TrendingUp,
-  User,
-  X,
-  FileText,
-  CreditCard,
-  ArrowUpRight,
-  Plus,
-  Edit,
-  AlertCircle,
-  Ban
-} from 'lucide-react';
+/**
+ * Patient Medical Records — comprehensive read-only view of a patient's
+ * own clinical data. Pulls 4 endpoints in parallel:
+ *   - /api/data/medical-records  (visits + diagnoses)
+ *   - /api/data/lab-results      (test results)
+ *   - /api/data/prescriptions    (Rx)
+ *   - /api/data/user/dashboard   (patient profile: blood type, allergies, ...)
+ *
+ * Backend already scopes every list to the logged-in patient (see
+ * `buildPatientScope` in dataController). Nothing to filter client-side.
+ *
+ * Layout:
+ *   1. Patient profile header   — blood type / allergies / insurance / etc.
+ *   2. 4 summary stat cards
+ *   3. Three tabs:
+ *        a) "Theo đợt khám"  — timeline of visits, each expandable to
+ *           show its associated lab results + prescriptions
+ *        b) "Đơn thuốc"      — full Rx list with details + doctor info
+ *        c) "Xét nghiệm"     — lab results with normal-range highlighting
+ */
+
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link, useNavigate } from 'react-router-dom';
+import {
+  ClipboardList,
+  FlaskConical,
+  Pill,
+  Calendar,
+  Stethoscope,
+  HeartPulse,
+  Droplet,
+  AlertCircle,
+  ChevronDown,
+  Loader2,
+  ShieldCheck,
+  User as UserIcon,
+  Phone,
+  Building2,
+  TrendingUp,
+  TrendingDown,
+  Check,
+  History,
+  FileText,
+} from 'lucide-react';
 
 import { cn } from '../lib/utils';
-import { UserRole, MedicalRecord } from '../types';
 import { dataService } from '../services/dataService';
 
+// ─── API response shapes ───────────────────────────────
+
+interface ApiUser {
+  id: string;
+  email?: string;
+  phoneNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  role?: string;
+}
+
+interface ApiDoctor {
+  id: string;
+  specialization?: string;
+  department?: string;
+  office?: string;
+  degree?: string;
+  experience?: number;
+  rating?: number;
+  user?: ApiUser;
+}
+
+interface ApiPatient {
+  id: string;
+  bloodType?: string | null;
+  allergies?: string | null;
+  chronicDiseases?: string | null;
+  emergencyContact?: string | null;
+  insuranceId?: string | null;
+  insuranceProvider?: string | null;
+  user?: ApiUser;
+}
+
+interface ApiMedicalRecord {
+  id: string;
+  patientId: string;
+  doctorId: string;
+  appointmentId?: string | null;
+  recordType?: string;
+  diagnosis?: string | null;
+  symptoms?: string | null;
+  treatment?: string | null;
+  notes?: string | null;
+  recordDate: string;
+  createdAt: string;
+  doctor?: ApiDoctor;
+  patient?: ApiPatient;
+}
+
+interface ApiLabResult {
+  id: string;
+  medicalRecordId?: string | null;
+  testName: string;
+  testCode?: string | null;
+  status?: string;
+  resultValue?: string | null;
+  resultUnit?: string | null;
+  normalRange?: string | null;
+  testDate: string;
+  doctor?: ApiDoctor;
+  technician?: { user?: ApiUser; department?: string; specialization?: string };
+}
+
+interface ApiPrescription {
+  id: string;
+  medicalRecordId?: string | null;
+  medicationName: string;
+  treatmentType?: string | null;
+  dosage: string;
+  frequency: string;
+  duration?: number | null;
+  quantity?: number | null;
+  instructions?: string | null;
+  isActive: boolean;
+  prescriptionDate: string;
+  doctor?: ApiDoctor;
+}
+
+// ─── Helpers ───────────────────────────────────────────
+
+const formatDate = (s?: string | null) =>
+  s ? new Date(s).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+
+const doctorName = (d?: ApiDoctor) => {
+  if (!d?.user) return 'Bác sĩ điều trị';
+  return `BS. ${d.user.firstName ?? ''} ${d.user.lastName ?? ''}`.trim();
+};
+
+const RECORD_TYPE_LABEL: Record<string, string> = {
+  GENERAL_CHECKUP: 'Khám tổng quát',
+  DIAGNOSIS: 'Chẩn đoán',
+  FOLLOW_UP: 'Tái khám',
+  TREATMENT: 'Điều trị',
+  EMERGENCY: 'Cấp cứu',
+  SURGERY: 'Phẫu thuật',
+};
+
+const RECORD_TYPE_TONE: Record<string, string> = {
+  GENERAL_CHECKUP: 'bg-sky-50 text-sky-700 border-sky-200',
+  DIAGNOSIS: 'bg-violet-50 text-violet-700 border-violet-200',
+  FOLLOW_UP: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  TREATMENT: 'bg-amber-50 text-amber-700 border-amber-200',
+  EMERGENCY: 'bg-rose-50 text-rose-700 border-rose-200',
+  SURGERY: 'bg-orange-50 text-orange-700 border-orange-200',
+};
+
+// Compare numeric result against `<N` / `N-M` style ranges. Returns 'HIGH',
+// 'LOW', 'NORMAL', or 'UNKNOWN' if we can't parse the range.
+function labStatus(value?: string | null, range?: string | null): 'HIGH' | 'LOW' | 'NORMAL' | 'UNKNOWN' {
+  if (!value || !range) return 'UNKNOWN';
+  const num = parseFloat(value);
+  if (Number.isNaN(num)) return 'UNKNOWN';
+  // "<5.2" or "<40"
+  const ltMatch = range.match(/^<\s*([0-9.]+)/);
+  if (ltMatch) return num <= parseFloat(ltMatch[1]) ? 'NORMAL' : 'HIGH';
+  // ">5"
+  const gtMatch = range.match(/^>\s*([0-9.]+)/);
+  if (gtMatch) return num >= parseFloat(gtMatch[1]) ? 'NORMAL' : 'LOW';
+  // "120-160" or "120 - 160"
+  const rangeMatch = range.match(/([0-9.]+)\s*-\s*([0-9.]+)/);
+  if (rangeMatch) {
+    const lo = parseFloat(rangeMatch[1]);
+    const hi = parseFloat(rangeMatch[2]);
+    if (num < lo) return 'LOW';
+    if (num > hi) return 'HIGH';
+    return 'NORMAL';
+  }
+  return 'UNKNOWN';
+}
+
+const LAB_STATUS_TONE: Record<string, string> = {
+  HIGH: 'text-rose-600 bg-rose-50',
+  LOW: 'text-amber-600 bg-amber-50',
+  NORMAL: 'text-emerald-600 bg-emerald-50',
+  UNKNOWN: 'text-slate-500 bg-slate-50',
+};
+
+// ─── Component ─────────────────────────────────────────
+
+type Tab = 'visits' | 'prescriptions' | 'labs';
+
 export default function MedicalRecords() {
-  const navigate = useNavigate();
-  const [records, setRecords] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'history' | 'labs' | 'meds'>('history');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [userRole, setUserRole] = useState<UserRole>(UserRole.PATIENT);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedPatientRecord, setSelectedPatientRecord] = useState<any | null>(null);
-  const [viewingVisitId, setViewingVisitId] = useState<string | null>(null);
-  const [selectedLabCategory, setSelectedLabCategory] = useState<string | null>(null);
-
-  // Add/Edit state
-  const [isCreatingRecord, setIsCreatingRecord] = useState(false);
-  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
-  const [newRecordData, setNewRecordData] = useState({
-    patientName: 'Nguyễn Văn A',
-    diagnosis: '',
-    symptoms: '',
-    summary: '',
-    medications: [{ 
-      name: '', 
-      dosage: '', 
-      quantity: 1, 
-      unit: 'viên', 
-      price: 0,
-      purpose: '',
-      morning: 1, 
-      noon: 0, 
-      afternoon: 0, 
-      evening: 1, 
-      duration: '5 ngày', 
-      instructions: 'Sau ăn 30p' 
-    }],
-    prescriptionNotes: '',
-    date: new Date().toLocaleDateString('vi-VN')
-  });
-
-  const canEditRecord = (recordDate: string) => {
-    try {
-      const parts = recordDate.split('/');
-      if (parts.length !== 3) return false;
-      const [day, month, year] = parts.map(Number);
-      const recordDateTime = new Date(year, month - 1, day).getTime();
-      const now = new Date();
-      now.setHours(0, 0, 0, 0); // Start of today
-      const diffTime = now.getTime() - recordDateTime;
-      const diffDays = diffTime / (1000 * 60 * 60 * 24);
-      return diffDays <= 3;
-    } catch (e) {
-      return false;
-    }
-  };
-
-  const viewingVisit = records.find(r => r.id === viewingVisitId);
-
-  const labCategories = [
-    { id: 'blood', label: 'Xét nghiệm Máu', icon: FlaskConical },
-    { id: 'urine', label: 'Nước tiểu', icon: Activity },
-    { id: 'stool', label: 'Xét nghiệm Phân', icon: ClipboardList },
-    { id: 'imaging', label: 'Chẩn đoán Hình ảnh', icon: Search },
-    { id: 'cardiovascular', label: 'Tim mạch', icon: Activity },
-  ];
+  const [records, setRecords] = useState<ApiMedicalRecord[]>([]);
+  const [labs, setLabs] = useState<ApiLabResult[]>([]);
+  const [prescriptions, setPrescriptions] = useState<ApiPrescription[]>([]);
+  const [patientProfile, setPatientProfile] = useState<ApiPatient | null>(null);
+  const [tab, setTab] = useState<Tab>('visits');
+  const [loading, setLoading] = useState(true);
+  const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
 
   useEffect(() => {
-    const role = localStorage.getItem('userRole') as any;
-    if (role) {
-      setUserRole(role);
-      if (role === 'ADMIN') {
-        navigate('/admin');
-      }
-    }
-    
-    const fetchRecords = async () => {
+    (async () => {
+      setLoading(true);
       try {
-        const [data, labData] = await Promise.all([
-          dataService.getMedicalRecords().catch(() => []),
-          dataService.getLabResults().catch(() => [])
+        const [recs, labResults, rx, dashboard] = await Promise.all([
+          (dataService.getMedicalRecords() as unknown) as Promise<ApiMedicalRecord[]>,
+          (dataService.getLabResults() as unknown) as Promise<ApiLabResult[]>,
+          (dataService.getPrescriptions() as unknown) as Promise<ApiPrescription[]>,
+          dataService.getPatientDashboard().catch(() => null),
         ]);
-
-        if (data && data.length > 0) {
-          const mappedRecords = data.map((r: any) => {
-            // Match labs to this record via `medicalRecordId` (the actual FK
-            // returned by the API). Falling back to "all labs" creates noise.
-            const recordLabs = labData.filter((l: any) => l.medicalRecordId === r.id);
-
-            // Use the joined doctor.user info when available, fall back to a
-            // truncated id only if the backend didn't return the relation.
-            const doctorUser = r.doctor?.user;
-            const doctorName = doctorUser
-              ? `BS. ${doctorUser.firstName ?? ''} ${doctorUser.lastName ?? ''}`.trim()
-              : 'Bác sĩ điều trị';
-
-            const patientUser = r.patient?.user;
-            const patientName = patientUser
-              ? `${patientUser.firstName ?? ''} ${patientUser.lastName ?? ''}`.trim()
-              : 'Bệnh nhân';
-
-            return {
-              id: r.id,
-              patientName,
-              doctor: doctorName,
-              department: r.doctor?.department || r.doctor?.specialization || '',
-              date: new Date(r.recordDate || r.createdAt || new Date()).toLocaleDateString('vi-VN'),
-              diagnosis: r.diagnosis || 'Chưa có chẩn đoán',
-              symptoms: r.symptoms ? r.symptoms.split(',').map((s: string) => s.trim()) : [],
-              summary: r.notes || '',
-              billingStatus: 'PAID',
-              totalCost: 0,
-              results: {
-                medications: r.treatment
-                  ? [
-                      {
-                        name: r.treatment,
-                        purpose: r.diagnosis || 'Điều trị',
-                        quantity: 1,
-                        unit: 'liều',
-                        dosage: 'Theo chỉ định',
-                        duration: 'Theo toa',
-                        instructions: '',
-                        price: 0,
-                        morning: 1,
-                        noon: 0,
-                        afternoon: 0,
-                        evening: 1,
-                      },
-                    ]
-                  : [],
-                prescriptionNotes: r.notes,
-                blood: recordLabs.map((l: any) => ({
-                  name: l.testName,
-                  value: l.resultValue ?? 'N/A',
-                  unit: l.resultUnit ?? '',
-                  range: l.normalRange ?? '',
-                  status: 'NORMAL',
-                  date: new Date(l.testDate || l.createdAt || new Date()).toLocaleDateString('vi-VN'),
-                })),
-                urine: [],
-                stool: [],
-                imaging: [],
-                cardiovascular: [],
-              },
-            };
-          });
-          setRecords(mappedRecords);
-        } else {
-          setRecords([]);
-        }
+        setRecords(Array.isArray(recs) ? recs : []);
+        setLabs(Array.isArray(labResults) ? labResults : []);
+        setPrescriptions(Array.isArray(rx) ? rx : []);
+        // Prefer joined `patient` from a record (always present); fall back
+        // to the dashboard payload if no record exists yet.
+        const fromRecord = recs?.[0]?.patient ?? null;
+        setPatientProfile(fromRecord ?? dashboard ?? null);
       } catch (err) {
-        console.error(err);
-        setRecords([]);
+        console.error('Failed to load medical records', err);
+      } finally {
+        setLoading(false);
       }
-    };
-    fetchRecords();
-  }, [navigate]);
+    })();
+  }, []);
 
-  const handleSearchPatient = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    
-    setIsSearching(true);
-    setTimeout(() => {
-      // For demo purposes, we'll find any record that matches the query
-      const record = records.find(r => 
-        r.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        'Nguyễn Văn A'.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSelectedPatientRecord(record || null);
-      setIsSearching(false);
-    }, 800);
-  };
-
-  const currentRecords = userRole === UserRole.DOCTOR 
-    ? (selectedPatientRecord ? records.filter(r => r.patientName === (selectedPatientRecord.patientName || 'Nguyễn Văn A')) : []) 
-    : records;
-
-  const filteredRecords = currentRecords.filter(r => 
-    r.diagnosis.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.doctor.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSaveRecord = async () => {
-    const totalCost = newRecordData.medications.reduce((sum, m) => sum + (m.price * (m.quantity || 0)), 0);
-    
-    try {
-      if (editingRecordId) {
-        await dataService.updateMedicalRecord(editingRecordId, {
-          diagnosis: newRecordData.diagnosis,
-          symptoms: newRecordData.symptoms,
-          notes: newRecordData.summary,
-          treatment: newRecordData.medications.map(m => m.name).join(', ')
-        });
-        
-        setRecords(prev => prev.map(r => r.id === editingRecordId ? {
-          ...r,
-          diagnosis: newRecordData.diagnosis,
-          summary: newRecordData.summary,
-          totalCost: totalCost,
-          results: {
-            ...r.results,
-            medications: newRecordData.medications,
-            prescriptionNotes: newRecordData.prescriptionNotes
-          }
-        } : r));
-      } else {
-        const newRec = await dataService.createMedicalRecord({
-          patientId: 'patient123',
-          doctorId: 'doctor123',
-          diagnosis: newRecordData.diagnosis,
-          symptoms: newRecordData.symptoms,
-          treatment: newRecordData.medications.map(m => m.name).join(', '),
-          notes: newRecordData.summary,
-        });
-
-        const newRecord: any = {
-          id: newRec.id || `BN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-          date: newRecordData.date,
-          doctor: 'BS. Lê Thành Nam',
-          patientName: newRecordData.patientName,
-          diagnosis: newRecordData.diagnosis,
-          summary: newRecordData.summary,
-          billingStatus: 'PENDING',
-          totalCost: totalCost,
-          results: {
-            medications: newRecordData.medications,
-            prescriptionNotes: newRecordData.prescriptionNotes,
-            blood: [], urine: [], stool: [], imaging: [], cardiovascular: []
-          },
-          symptoms: newRecordData.symptoms.split(',').map(s => s.trim())
-        };
-        setRecords(prev => [newRecord, ...prev]);
-      }
-      setIsCreatingRecord(false);
-      setEditingRecordId(null);
-    } catch(err) {
-      console.error(err);
-      alert('Failed to save record');
-    }
-  };
-
-  const handleEditRecord = (record: any) => {
-    setEditingRecordId(record.id);
-    setNewRecordData({
-      patientName: record.patientName || 'Nguyễn Văn A',
-      diagnosis: record.diagnosis,
-      symptoms: (record.symptoms || []).join(', '),
-      summary: record.summary || '',
-      medications: record.results.medications,
-      prescriptionNotes: record.results.prescriptionNotes || '',
-      date: record.date
+  // Group labs / prescriptions by medical record for the timeline view.
+  const labsByRecord = useMemo(() => {
+    const map = new Map<string, ApiLabResult[]>();
+    labs.forEach((l) => {
+      if (!l.medicalRecordId) return;
+      const arr = map.get(l.medicalRecordId) ?? [];
+      arr.push(l);
+      map.set(l.medicalRecordId, arr);
     });
-    setIsCreatingRecord(true);
-  };
+    return map;
+  }, [labs]);
 
-  if (userRole === UserRole.DOCTOR && !selectedPatientRecord) {
+  const prescriptionsByRecord = useMemo(() => {
+    const map = new Map<string, ApiPrescription[]>();
+    prescriptions.forEach((p) => {
+      if (!p.medicalRecordId) return;
+      const arr = map.get(p.medicalRecordId) ?? [];
+      arr.push(p);
+      map.set(p.medicalRecordId, arr);
+    });
+    return map;
+  }, [prescriptions]);
+
+  const activePrescriptions = prescriptions.filter((p) => p.isActive);
+
+  // ─── Render ────────────────────────────────────────
+  if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-12 py-10">
-        <div className="text-center space-y-4">
-          <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto text-primary">
-            <Search size={40} />
-          </div>
-          <h2 className="text-3xl font-bold text-slate-800">Tra cứu hồ sơ bệnh nhân</h2>
-          <p className="text-slate-500 max-w-md mx-auto">Vui lòng nhập Mã BN hoặc Tên bệnh nhân để truy xuất hồ sơ bệnh án điện tử.</p>
-        </div>
-
-        <form onSubmit={handleSearchPatient} className="max-w-xl mx-auto relative group">
-          <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
-            <Search size={20} />
-          </div>
-          <input 
-            type="text"
-            placeholder="Mã BN (BN123...) hoặc Tên bệnh nhân"
-            className="w-full pl-16 pr-32 py-5 bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-lg"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button 
-            type="submit"
-            disabled={isSearching}
-            className="absolute right-3 top-3 bottom-3 px-8 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2 disabled:opacity-50"
-          >
-            {isSearching ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Tra cứu'}
-          </button>
-        </form>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-          {[
-            { label: 'Bệnh nhân mới nhất', val: 'Nguyễn Văn A' },
-            { label: 'Gần đây', val: 'BN-2024-0511' },
-            { label: 'Hôm nay', val: 'Trần Thị B' },
-          ].map((item, i) => (
-            <button 
-              key={i}
-              onClick={() => setSearchQuery(item.val)}
-              className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-left hover:bg-white hover:border-primary/20 transition-all group"
-            >
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 group-hover:text-primary">{item.label}</p>
-              <p className="text-sm font-bold text-slate-700">{item.val}</p>
-            </button>
-          ))}
-        </div>
+      <div className="max-w-6xl mx-auto py-20 text-center">
+        <Loader2 className="animate-spin mx-auto mb-4 text-primary" size={32} />
+        <p className="text-slate-500 text-sm">Đang tải hồ sơ bệnh án...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-           <h2 className="text-2xl font-bold text-slate-800">
-             {userRole === UserRole.DOCTOR ? `Hồ sơ bệnh nhân: Nguyễn Văn A` : 'Hồ sơ Bệnh án'}
-           </h2>
-           <p className="text-slate-500 text-sm">
-             {userRole === UserRole.DOCTOR 
-               ? 'Dữ liệu bệnh án được truy xuất từ kho lưu trữ trung tâm của bệnh viện.' 
-               : 'Quản lý và tra cứu kết quả khám bệnh tập trung qua các thời kỳ.'}
-           </p>
-        </div>
-        <div className="flex items-center gap-2">
-           {userRole === UserRole.DOCTOR && (
-             <>
-               <button 
-                 onClick={() => {
-                   setEditingRecordId(null);
-                   setNewRecordData({
-                     patientName: 'Nguyễn Văn A',
-                     diagnosis: '',
-                     symptoms: '',
-                     summary: '',
-                     medications: [{ name: '', dosage: '', quantity: 1, unit: 'viên', price: 0, purpose: '', morning: 1, noon: 0, afternoon: 0, evening: 1, duration: '5 ngày', instructions: 'Sau ăn 30p' }],
-                     prescriptionNotes: '',
-                     date: new Date().toLocaleDateString('vi-VN')
-                   });
-                   setIsCreatingRecord(true);
-                 }}
-                 className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg"
-               >
-                 <Plus size={16} /> Tạo hồ sơ mới
-               </button>
-               <button 
-                 onClick={() => setSelectedPatientRecord(null)}
-                 className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition-all"
-               >
-                  <X size={16} /> Thoát tra cứu
-               </button>
-             </>
-           )}
-        </div>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* ─── Header ─── */}
+      <div className="space-y-2">
+        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Hồ sơ Bệnh án</h2>
+        <p className="text-slate-500 text-sm">
+          Toàn bộ thông tin sức khỏe, đợt khám, xét nghiệm và đơn thuốc của bạn — đồng bộ từ hệ thống bệnh viện.
+        </p>
       </div>
 
-      {/* Aggregated Tabs */}
-      <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl w-full max-w-2xl overflow-x-auto no-scrollbar">
-        {[
-          { id: 'history', label: 'Theo đợt khám', icon: ClipboardList },
-          { id: 'labs', label: 'Xét nghiệm', icon: FlaskConical },
-          { id: 'meds', label: 'Đơn thuốc', icon: Pill },
-        ].map(tab => (
+      {/* ─── Patient profile card ─── */}
+      {patientProfile && <PatientProfileHeader patient={patientProfile} />}
+
+      {/* ─── Summary stats ─── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard icon={<History size={20} />} label="Đợt khám" value={records.length} tone="sky" />
+        <StatCard
+          icon={<Pill size={20} />}
+          label="Đơn đang dùng"
+          value={activePrescriptions.length}
+          sub={`/ ${prescriptions.length} tổng`}
+          tone="emerald"
+        />
+        <StatCard icon={<FlaskConical size={20} />} label="Kết quả XN" value={labs.length} tone="violet" />
+        <StatCard
+          icon={<AlertCircle size={20} />}
+          label="Dị ứng"
+          value={patientProfile?.allergies && patientProfile.allergies !== 'Không' ? 1 : 0}
+          sub={patientProfile?.allergies ?? '—'}
+          tone="rose"
+        />
+      </div>
+
+      {/* ─── Tabs ─── */}
+      <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl w-full md:max-w-xl">
+        {([
+          { id: 'visits', label: 'Theo đợt khám', icon: ClipboardList, count: records.length },
+          { id: 'prescriptions', label: 'Đơn thuốc', icon: Pill, count: prescriptions.length },
+          { id: 'labs', label: 'Xét nghiệm', icon: FlaskConical, count: labs.length },
+        ] as { id: Tab; label: string; icon: any; count: number }[]).map((t) => (
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            key={t.id}
+            onClick={() => setTab(t.id)}
             className={cn(
-              "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex-1",
-              activeTab === tab.id 
-                ? "bg-white text-primary shadow-sm" 
-                : "text-slate-500 hover:text-slate-800"
+              'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap',
+              tab === t.id ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-800',
             )}
           >
-            <tab.icon size={18} />
-            {tab.label}
+            <t.icon size={16} />
+            <span className="hidden sm:inline">{t.label}</span>
+            <span className={cn('text-[10px] px-1.5 rounded-full', tab === t.id ? 'bg-primary/10' : 'bg-slate-200')}>
+              {t.count}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* Search Filter */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400">
-           <Search size={18} />
-        </div>
-        <input 
-          type="text"
-          placeholder="Tìm kiếm trong hồ sơ (bác sĩ, chẩn đoán, thuốc...)"
-          className="w-full pl-11 pr-4 py-3 bg-white rounded-xl border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-primary/20"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-6">
-        {activeTab === 'history' && !viewingVisitId && (
-          <div className="space-y-4">
-            {filteredRecords.map((record) => (
-              <motion.div 
-                key={record.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => setViewingVisitId(record.id)}
-                className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:border-primary/20 transition-all cursor-pointer group"
-              >
-                <div className="flex flex-col md:flex-row gap-6">
-                  <div className="flex md:flex-col items-center md:items-start gap-4 md:gap-1 min-w-32 border-b md:border-b-0 md:border-r border-slate-100 pb-4 md:pb-0 md:pr-6">
-                     <span className="text-slate-400 font-bold text-xs uppercase">Ngày khám</span>
-                     <span className="text-slate-800 font-bold flex items-center gap-2"><Calendar size={14} className="text-primary"/> {record.date}</span>
-                  </div>
-                  
-                  <div className="flex-1 space-y-4">
-                    <div className="flex justify-between items-start">
-                       <div>
-                          <p className="text-primary font-bold text-lg">{record.diagnosis}</p>
-                          <p className="text-slate-500 text-sm">Bác sĩ: {record.doctor}</p>
-                       </div>
-                       <div className="flex items-center gap-2">
-                          {userRole === UserRole.DOCTOR && (
-                            canEditRecord(record.date) ? (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditRecord(record);
-                                }}
-                                className="p-2 bg-slate-50 rounded-xl text-slate-500 hover:text-primary hover:bg-primary/10 transition-all"
-                                title="Chỉnh sửa hồ sơ (trong vòng 3 ngày)"
-                              >
-                                <Edit size={16} />
-                              </button>
-                            ) : (
-                              <button 
-                                disabled
-                                className="p-2 bg-slate-50 rounded-xl text-slate-300 cursor-not-allowed"
-                                title="Đã quá hạn chỉnh sửa (3 ngày)"
-                              >
-                                <Ban size={16} />
-                              </button>
-                            )
-                          )}
-                          <div className="p-2 bg-slate-50 rounded-full text-slate-400 group-hover:text-primary group-hover:bg-primary/10 transition-all">
-                             <ChevronRight size={20} />
-                          </div>
-                       </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-3">
-                       {(record.results.blood || record.results.labTests) && (
-                          <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100 flex items-center gap-1.5">
-                            <FlaskConical size={12} /> {(record.results.blood?.length || 0) + (record.results.labTests?.length || 0)} Xét nghiệm
-                          </span>
-                       )}
-                       {record.results.medications.length > 0 && (
-                          <span className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-xs font-bold border border-green-100 flex items-center gap-1.5">
-                            <Pill size={12} /> {record.results.medications.length} Loại thuốc
-                          </span>
-                       )}
-                       <span className={cn(
-                          "px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5",
-                          record.billingStatus === 'PAID' ? "bg-green-50 text-green-600 border-green-100" : "bg-orange-50 text-orange-600 border-orange-100"
-                       )}>
-                          <CreditCard size={12} /> {record.billingStatus === 'PAID' ? 'Đã quyết toán' : 'Chờ thanh toán'}
-                       </span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+      {/* ─── Tab content ─── */}
+      <AnimatePresence mode="wait">
+        {tab === 'visits' && (
+          <motion.div
+            key="visits"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-4"
+          >
+            {records.length === 0 ? (
+              <EmptyState icon={<ClipboardList size={28} />} text="Bạn chưa có đợt khám nào trong hệ thống." />
+            ) : (
+              records.map((r) => (
+                <VisitCard
+                  key={r.id}
+                  record={r}
+                  expanded={expandedRecordId === r.id}
+                  onToggle={() => setExpandedRecordId(expandedRecordId === r.id ? null : r.id)}
+                  labs={labsByRecord.get(r.id) ?? []}
+                  prescriptions={prescriptionsByRecord.get(r.id) ?? []}
+                />
+              ))
+            )}
+          </motion.div>
         )}
 
-        {activeTab === 'history' && viewingVisitId && viewingVisit && (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
+        {tab === 'prescriptions' && (
+          <motion.div
+            key="prescriptions"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-3"
           >
-            <button 
-              onClick={() => setViewingVisitId(null)}
-              className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <ArrowUpRight size={14} className="rotate-225" /> Quay lại danh sách
-            </button>
+            {prescriptions.length === 0 ? (
+              <EmptyState icon={<Pill size={28} />} text="Chưa có đơn thuốc nào." />
+            ) : (
+              prescriptions.map((p) => <PrescriptionCard key={p.id} rx={p} />)
+            )}
+          </motion.div>
+        )}
 
-            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-8">
-              <div className="flex flex-col md:flex-row justify-between items-start gap-4 pb-6 border-b border-slate-100">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase">Đợt khám chi tiết</span>
-                    <span className="text-slate-300 text-xs">•</span>
-                    <span className="text-slate-400 text-xs font-bold">{viewingVisit.date}</span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800">{viewingVisit.diagnosis}</h3>
-                  <p className="text-slate-500 font-medium">Bác sĩ điều trị: {viewingVisit.doctor}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Trạng thái thanh toán</p>
-                  <span className={cn(
-                    "px-4 py-1.5 rounded-xl text-xs font-bold uppercase",
-                    viewingVisit.billingStatus === 'PAID' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                  )}>
-                    {viewingVisit.billingStatus === 'PAID' ? 'Hoàn tất' : 'Chưa thanh toán'}
-                  </span>
-                </div>
+        {tab === 'labs' && (
+          <motion.div
+            key="labs"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-3"
+          >
+            {labs.length === 0 ? (
+              <EmptyState icon={<FlaskConical size={28} />} text="Chưa có kết quả xét nghiệm nào." />
+            ) : (
+              <LabResultsTable labs={labs} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Sub-components ────────────────────────────────────
+
+function PatientProfileHeader({ patient }: { patient: ApiPatient }) {
+  const u = patient.user;
+  const name = u ? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() : 'Bệnh nhân';
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('') || '?';
+  const age = u?.dateOfBirth ? new Date().getFullYear() - new Date(u.dateOfBirth).getFullYear() : null;
+
+  return (
+    <section className="bg-gradient-to-br from-sky-50 to-teal-50 border border-sky-200/50 rounded-3xl p-5 sm:p-6 relative overflow-hidden">
+      <div className="absolute -top-12 -right-12 w-48 h-48 bg-gradient-to-br from-sky-200/40 to-teal-200/40 rounded-full blur-2xl" />
+      <div className="relative flex flex-col md:flex-row md:items-center gap-5">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-sky-500 to-teal-500 text-white font-extrabold text-2xl grid place-items-center shadow-lg shadow-sky-500/25 shrink-0">
+          {initials}
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">{name}</h3>
+            {patient.bloodType && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                <Droplet size={11} /> Nhóm máu {patient.bloodType}
+              </span>
+            )}
+          </div>
+          <div className="text-sm text-slate-600 flex items-center gap-3 flex-wrap">
+            {u?.phoneNumber && (
+              <span className="inline-flex items-center gap-1">
+                <Phone size={13} className="text-slate-400" /> {u.phoneNumber}
+              </span>
+            )}
+            {age !== null && <span>· {age} tuổi</span>}
+            {u?.gender && <span>· {u.gender === 'MALE' ? 'Nam' : u.gender === 'FEMALE' ? 'Nữ' : 'Khác'}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <ProfileField
+          icon={<AlertCircle size={14} className="text-rose-500" />}
+          label="Dị ứng"
+          value={patient.allergies || 'Không có'}
+        />
+        <ProfileField
+          icon={<HeartPulse size={14} className="text-amber-500" />}
+          label="Bệnh mạn tính"
+          value={patient.chronicDiseases || 'Không có'}
+        />
+        <ProfileField
+          icon={<Phone size={14} className="text-sky-500" />}
+          label="Liên hệ khẩn cấp"
+          value={patient.emergencyContact || '—'}
+        />
+        <ProfileField
+          icon={<ShieldCheck size={14} className="text-emerald-500" />}
+          label="Bảo hiểm"
+          value={
+            patient.insuranceProvider
+              ? `${patient.insuranceProvider} · ${patient.insuranceId ?? ''}`
+              : 'Chưa đăng ký'
+          }
+        />
+      </div>
+    </section>
+  );
+}
+
+function ProfileField({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="bg-white/70 backdrop-blur-sm rounded-xl px-3 py-2.5 border border-white/60">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1 flex items-center gap-1.5">
+        {icon} {label}
+      </p>
+      <p className="text-sm font-semibold text-slate-800 leading-snug">{value}</p>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  sub?: string;
+  tone: 'sky' | 'emerald' | 'violet' | 'rose';
+}) {
+  const toneCls = {
+    sky: 'bg-sky-50 text-sky-700 border-sky-200',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    violet: 'bg-violet-50 text-violet-700 border-violet-200',
+    rose: 'bg-rose-50 text-rose-700 border-rose-200',
+  }[tone];
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-3">
+      <div className={cn('w-10 h-10 rounded-xl grid place-items-center border', toneCls)}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+        <p className="text-2xl font-extrabold text-slate-900 leading-tight">{value}</p>
+        {sub && <p className="text-[11px] text-slate-500 truncate mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function VisitCard({
+  record,
+  expanded,
+  onToggle,
+  labs,
+  prescriptions,
+}: {
+  record: ApiMedicalRecord;
+  expanded: boolean;
+  onToggle: () => void;
+  labs: ApiLabResult[];
+  prescriptions: ApiPrescription[];
+}) {
+  const typeLabel = record.recordType ? RECORD_TYPE_LABEL[record.recordType] || record.recordType : 'Khám';
+  const typeTone = record.recordType ? RECORD_TYPE_TONE[record.recordType] || RECORD_TYPE_TONE.DIAGNOSIS : '';
+  const symptoms = (record.symptoms || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+  return (
+    <article className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+      <button
+        onClick={onToggle}
+        className="w-full text-left p-5 hover:bg-slate-50 transition-colors flex flex-col md:flex-row gap-4 md:items-start"
+      >
+        {/* Date pill */}
+        <div className="shrink-0 flex flex-col items-center md:w-24 bg-gradient-to-br from-sky-50 to-teal-50 rounded-2xl py-3 px-3 border border-sky-100">
+          <Calendar size={14} className="text-primary mb-1" />
+          <p className="text-[10px] font-bold text-slate-400 uppercase">Ngày khám</p>
+          <p className="text-sm font-extrabold text-slate-900">{formatDate(record.recordDate)}</p>
+        </div>
+
+        {/* Main info */}
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-start gap-2 flex-wrap">
+            <span className={cn('inline-block text-[10px] font-bold uppercase px-2 py-1 rounded-md border', typeTone)}>
+              {typeLabel}
+            </span>
+            {record.doctor?.department && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-1 rounded-md bg-slate-50 text-slate-600 border border-slate-200">
+                <Building2 size={10} /> {record.doctor.department}
+              </span>
+            )}
+          </div>
+
+          <h4 className="text-lg font-bold text-primary leading-tight">
+            {record.diagnosis || 'Chưa có chẩn đoán'}
+          </h4>
+
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Stethoscope size={14} className="text-slate-400" />
+            <span>{doctorName(record.doctor)}</span>
+            {record.doctor?.specialization && (
+              <span className="text-slate-400">· {record.doctor.specialization}</span>
+            )}
+          </div>
+
+          {symptoms.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {symptoms.slice(0, 4).map((s, i) => (
+                <span
+                  key={i}
+                  className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100"
+                >
+                  {s}
+                </span>
+              ))}
+              {symptoms.length > 4 && (
+                <span className="text-[11px] text-slate-400 font-medium">+{symptoms.length - 4} khác</span>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] text-slate-500 font-medium">
+            {labs.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-100">
+                <FlaskConical size={11} /> {labs.length} xét nghiệm
+              </span>
+            )}
+            {prescriptions.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <Pill size={11} /> {prescriptions.length} đơn thuốc
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Chevron */}
+        <ChevronDown
+          size={20}
+          className={cn(
+            'text-slate-400 transition-transform shrink-0 mt-1',
+            expanded && 'rotate-180 text-primary',
+          )}
+        />
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden border-t border-slate-100"
+          >
+            <div className="p-5 space-y-5 bg-slate-50/40">
+              {/* Treatment + notes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {record.treatment && (
+                  <DetailBox icon={<HeartPulse size={14} />} title="Hướng điều trị" tone="emerald">
+                    {record.treatment}
+                  </DetailBox>
+                )}
+                {record.notes && (
+                  <DetailBox icon={<FileText size={14} />} title="Ghi chú bác sĩ" tone="amber">
+                    {record.notes}
+                  </DetailBox>
+                )}
               </div>
 
-              {viewingVisit.summary && (
-                <div className="space-y-3">
-                  <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                    <FileText size={18} className="text-primary" /> Tổng kết chuyên môn
-                  </h4>
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 italic text-slate-600 leading-relaxed">
-                    "{viewingVisit.summary}"
+              {/* Doctor card */}
+              {record.doctor && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-teal-500 text-white grid place-items-center shadow-sm shrink-0">
+                    <Stethoscope size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-900">{doctorName(record.doctor)}</p>
+                    <p className="text-xs text-slate-500">
+                      {record.doctor.specialization} · {record.doctor.degree ?? ''}
+                    </p>
+                    <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5">
+                      {record.doctor.office && <span>Phòng {record.doctor.office}</span>}
+                      {typeof record.doctor.experience === 'number' && (
+                        <span>{record.doctor.experience} năm KN</span>
+                      )}
+                      {typeof record.doctor.rating === 'number' && (
+                        <span>⭐ {record.doctor.rating.toFixed(1)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Categorized Results */}
-                <div className="space-y-6">
-                  <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                    <FlaskConical size={18} className="text-primary" /> Kết quả cận lâm sàng
-                  </h4>
-                  <div className="space-y-3">
-                    {[
-                      { type: 'blood', label: 'Xét nghiệm Máu', data: viewingVisit.results.blood },
-                      { type: 'urine', label: 'Nước tiểu', data: viewingVisit.results.urine },
-                      { type: 'stool', label: 'Xét nghiệm Phân', data: viewingVisit.results.stool },
-                      { type: 'imaging', label: 'Chẩn đoán Hình ảnh', data: viewingVisit.results.imaging },
-                      { type: 'cardiovascular', label: 'Tim mạch', data: viewingVisit.results.cardiovascular },
-                    ].filter(cat => cat.data && cat.data.length > 0).map((cat, i) => (
-                      <button 
-                        key={i}
-                        onClick={() => {
-                          setActiveTab('labs');
-                          setSelectedLabCategory(cat.type);
-                        }}
-                        className="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-primary/20 hover:bg-slate-50 transition-all text-left"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-primary group-hover:bg-white">
-                            {cat.type === 'imaging' ? <Search size={20} /> : <FlaskConical size={20} />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-800">{cat.label}</p>
-                            <p className="text-[10px] text-slate-500">{cat.data?.length} kết quả</p>
-                          </div>
-                        </div>
-                        <ChevronRight size={18} className="text-slate-300" />
-                      </button>
-                    ))}
+              {/* Linked labs */}
+              {labs.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <FlaskConical size={12} /> Kết quả xét nghiệm
+                  </p>
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <LabRows labs={labs} compact />
                   </div>
                 </div>
+              )}
 
-                {/* Medications */}
-                <div className="space-y-6">
-                  <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                    <Pill size={18} className="text-primary" /> Đơn thuốc chỉ định
-                  </h4>
-                  <div className="space-y-4">
-                    {viewingVisit.results.medications.map((med, i) => (
-                      <div key={i} className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-3 group hover:border-primary/20 transition-all">
-                         <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                                  <Pill size={16} />
-                               </div>
-                               <div>
-                                  <p className="font-bold text-slate-800">{med.name}</p>
-                                  <p className="text-[10px] text-slate-500 font-medium">Mục đích: {med.purpose}</p>
-                               </div>
-                            </div>
-                            <div className="text-right">
-                               <p className="text-xs font-bold text-slate-700">{med.quantity} {med.unit}</p>
-                               <p className="text-[10px] text-slate-400 font-medium">{med.duration}</p>
-                            </div>
-                         </div>
-                         <div className="flex gap-1.5 pt-1">
-                            {[
-                               { l: 'S', v: med.morning },
-                               { l: 'T', v: med.noon },
-                               { l: 'C', v: med.afternoon },
-                               { l: 'T', v: med.evening }
-                            ].map((s, idx) => (
-                               <div key={idx} className={cn(
-                                 "w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-extrabold border transition-all",
-                                 s.v > 0 ? "bg-primary/10 border-primary/20 text-primary" : "bg-slate-50 border-slate-100 text-slate-300"
-                               )}>
-                                 {s.v > 0 ? s.v : '-'}
-                               </div>
-                            ))}
-                         </div>
-                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">HDSD & Chẩn đoán</p>
-                            <p className="text-xs text-slate-600 font-medium leading-relaxed">{med.dosage}. {med.instructions}</p>
-                         </div>
-                      </div>
+              {/* Linked prescriptions */}
+              {prescriptions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <Pill size={12} /> Đơn thuốc kê
+                  </p>
+                  <div className="space-y-2">
+                    {prescriptions.map((p) => (
+                      <PrescriptionCard key={p.id} rx={p} compact />
                     ))}
                   </div>
-                  {viewingVisit.results.prescriptionNotes && (
-                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                       <p className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest mb-1">Lời dặn bác sĩ</p>
-                       <p className="text-xs text-amber-900 font-medium leading-relaxed">{viewingVisit.results.prescriptionNotes}</p>
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
+    </article>
+  );
+}
 
-        {activeTab === 'labs' && (
-          <div className="space-y-8">
-            {/* Category Filter */}
-            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
-               <button 
-                onClick={() => setSelectedLabCategory(null)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all",
-                  !selectedLabCategory ? "bg-slate-900 shadow-lg text-white" : "bg-white border border-slate-100 text-slate-500"
-                )}
-               >
-                 Tất cả
-               </button>
-               {labCategories.map(cat => (
-                 <button 
-                  key={cat.id}
-                  onClick={() => setSelectedLabCategory(cat.id)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2",
-                    selectedLabCategory === cat.id ? "bg-slate-900 shadow-lg text-white" : "bg-white border border-slate-100 text-slate-500"
-                  )}
-                 >
-                   <cat.icon size={14} />
-                   {cat.label}
-                 </button>
-               ))}
+function DetailBox({
+  icon,
+  title,
+  tone,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  tone: 'emerald' | 'amber';
+  children: React.ReactNode;
+}) {
+  const cls = {
+    emerald: 'bg-emerald-50/70 border-emerald-200 text-emerald-900',
+    amber: 'bg-amber-50/70 border-amber-200 text-amber-900',
+  }[tone];
+  return (
+    <div className={cn('rounded-2xl border p-4', cls)}>
+      <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5 opacity-80">
+        {icon} {title}
+      </p>
+      <p className="text-sm leading-relaxed">{children}</p>
+    </div>
+  );
+}
+
+function PrescriptionCard({ rx, compact = false }: { rx: ApiPrescription; compact?: boolean }) {
+  return (
+    <div
+      className={cn(
+        'bg-white border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-start gap-4',
+        compact ? 'p-3' : 'p-4',
+      )}
+    >
+      <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center shrink-0 border border-emerald-100">
+        <Pill size={18} />
+      </div>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h5 className="font-bold text-slate-900">{rx.medicationName}</h5>
+          {rx.isActive ? (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Check size={9} className="inline mr-0.5" /> Đang dùng
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+              Đã ngưng
+            </span>
+          )}
+          {rx.treatmentType && (
+            <span className="text-[10px] font-medium text-slate-500">· {rx.treatmentType}</span>
+          )}
+        </div>
+        <p className="text-sm text-slate-700">
+          <span className="font-semibold">{rx.dosage}</span> — {rx.frequency}
+          {rx.duration && ` · ${rx.duration} ngày`}
+          {rx.quantity && ` · SL ${rx.quantity}`}
+        </p>
+        {rx.instructions && (
+          <p className="text-xs text-slate-500 italic leading-relaxed">💊 {rx.instructions}</p>
+        )}
+        <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-0.5">
+          <span>Kê ngày {formatDate(rx.prescriptionDate)}</span>
+          {rx.doctor && <span>· {doctorName(rx.doctor)}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LabResultsTable({ labs }: { labs: ApiLabResult[] }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden">
+      <LabRows labs={labs} />
+    </div>
+  );
+}
+
+function LabRows({ labs, compact = false }: { labs: ApiLabResult[]; compact?: boolean }) {
+  // Sort newest first
+  const sorted = [...labs].sort(
+    (a, b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime(),
+  );
+
+  return (
+    <div className="divide-y divide-slate-100">
+      {!compact && (
+        <div className="grid grid-cols-12 gap-3 px-5 py-3 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <div className="col-span-5">Xét nghiệm</div>
+          <div className="col-span-3">Kết quả</div>
+          <div className="col-span-2">CS tham chiếu</div>
+          <div className="col-span-2 text-right">Ngày</div>
+        </div>
+      )}
+      {sorted.map((l) => {
+        const status = labStatus(l.resultValue, l.normalRange);
+        const tone = LAB_STATUS_TONE[status];
+        return (
+          <div
+            key={l.id}
+            className={cn(
+              'grid grid-cols-12 gap-3 items-center hover:bg-slate-50/50 transition-colors',
+              compact ? 'px-3 py-2.5' : 'px-5 py-3.5',
+            )}
+          >
+            <div className="col-span-5 min-w-0">
+              <p className="font-semibold text-slate-800 text-sm truncate">{l.testName}</p>
+              {l.doctor && (
+                <p className="text-[11px] text-slate-400 truncate">{doctorName(l.doctor)}</p>
+              )}
             </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <AnimatePresence mode="popLayout">
-                {/* Render categories based on selection */}
-                {(['blood', 'urine', 'stool', 'cardiovascular'] as const).map(catId => {
-                  if (selectedLabCategory && selectedLabCategory !== catId) return null;
-                  
-                  const results = currentRecords.flatMap(r => r.results[catId] || []);
-                  if (results.length === 0) return null;
-
-                  return (
-                    <motion.div 
-                      key={catId}
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.98 }}
-                      className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
-                    >
-                      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                        <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                          {labCategories.find(c => c.id === catId)?.label} 
-                          <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full text-slate-500">{results.length}</span>
-                        </h4>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                          <thead className="bg-slate-50/30 border-b border-slate-100">
-                            <tr>
-                              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Chỉ số</th>
-                              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Kết quả</th>
-                              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Đơn vị</th>
-                              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">CS Tham chiếu</th>
-                              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">Ngày</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {results.map((test, i) => (
-                              <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-6 py-4">
-                                  <div className="space-y-0.5">
-                                    <p className="font-bold text-slate-800 text-sm">{test.name}</p>
-                                    {test.details && <p className="text-[10px] text-slate-400 italic">{test.details}</p>}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                   <span className={cn(
-                                     "font-bold text-base",
-                                     test.status === 'HIGH' ? "text-red-500" : test.status === 'LOW' ? "text-orange-500" : "text-green-600"
-                                   )}>{test.value}</span>
-                                </td>
-                                <td className="px-6 py-4 text-slate-500 text-xs">{test.unit}</td>
-                                <td className="px-6 py-4 text-slate-400 text-xs italic">{test.range}</td>
-                                <td className="px-6 py-4 text-slate-400 text-[10px] font-medium">{test.date}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-
-                {/* Imaging Category */}
-                {(!selectedLabCategory || selectedLabCategory === 'imaging') && (
-                  currentRecords.flatMap(r => r.results.imaging || []).length > 0 && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="space-y-4"
-                    >
-                      <h4 className="font-bold text-slate-800 ml-2">Chẩn đoán Hình ảnh</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {currentRecords.flatMap(r => r.results.imaging || []).map((img: any, i: number) => (
-                          <div key={i} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-                             <div className="relative h-48 bg-slate-900 group cursor-zoom-in">
-                               <img 
-                                src={img.image} 
-                                alt={img.type} 
-                                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                               />
-                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
-                                  <div className="text-white">
-                                    <p className="text-[10px] font-bold text-primary uppercase mb-1 tracking-widest">{img.type}</p>
-                                    <h5 className="font-bold text-lg">{img.region}</h5>
-                                  </div>
-                               </div>
-                               <div className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-xl text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Search size={20} />
-                               </div>
-                             </div>
-                             <div className="p-6 space-y-4 flex-1">
-                                <div className="space-y-2">
-                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Kết luận chuyên môn</p>
-                                   <p className="text-sm font-bold text-slate-800 leading-relaxed">{img.conclusion}</p>
-                                </div>
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Mô tả chi tiết</p>
-                                   <p className="text-xs text-slate-500 leading-relaxed">{img.description}</p>
-                                </div>
-                                <div className="pt-4 border-t border-slate-50 flex items-center justify-between text-slate-400">
-                                   <span className="flex items-center gap-1.5 text-[10px] font-bold">
-                                      <Calendar size={12} /> {img.date}
-                                   </span>
-                                   <button className="text-[10px] font-bold text-primary hover:underline">Chi tiết bản lưu</button>
-                                </div>
-                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )
-                )}
-              </AnimatePresence>
+            <div className="col-span-3 flex items-center gap-1.5">
+              <span className={cn('font-bold text-sm px-2 py-0.5 rounded-md', tone)}>
+                {l.resultValue ?? '—'}
+              </span>
+              <span className="text-xs text-slate-500">{l.resultUnit ?? ''}</span>
+              {status === 'HIGH' && <TrendingUp size={12} className="text-rose-500" />}
+              {status === 'LOW' && <TrendingDown size={12} className="text-amber-500" />}
+            </div>
+            <div className="col-span-2 text-xs text-slate-500 italic">{l.normalRange || '—'}</div>
+            <div className="col-span-2 text-right text-[11px] text-slate-400 font-medium">
+              {formatDate(l.testDate)}
             </div>
           </div>
-        )}
+        );
+      })}
+    </div>
+  );
+}
 
-        {activeTab === 'meds' && (
-           <div className="space-y-8">
-              {currentRecords.filter(record => record.results.medications && record.results.medications.length > 0)
-                .sort((a, b) => b.date.localeCompare(a.date))
-                .map((record, idx) => (
-                  <motion.div 
-                    key={record.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-100 overflow-hidden"
-                  >
-                    {/* Prescription Header */}
-                    <div className="p-8 pb-0 flex flex-col md:flex-row justify-between items-start gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                           <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
-                              <Pill size={18} />
-                           </div>
-                           <h3 className="text-xl font-extrabold text-slate-800">Đơn Thuốc Điện Tử</h3>
-                        </div>
-                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest pl-10">Mã đơn: DT-{record.id.toUpperCase()}</p>
-                      </div>
-                      <div className="text-left md:text-right space-y-1">
-                        <div className="flex items-center md:justify-end gap-2 text-slate-500">
-                           <Calendar size={14} />
-                           <span className="text-sm font-bold">Ngày kê đơn: {record.date}</span>
-                        </div>
-                        <div className="flex items-center md:justify-end gap-2 text-slate-500">
-                           <User size={14} />
-                           <span className="text-sm font-bold">Bác sĩ: {record.doctor}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-8 space-y-6">
-                      {/* Medication List */}
-                      <div className="space-y-4">
-                        <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-2 border-b border-slate-100 pb-2">Danh sách thuốc chỉ định</h4>
-                        {record.results.medications.map((med, i) => (
-                          <div key={i} className="flex flex-col md:flex-row gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-200/50 hover:bg-white hover:border-primary/30 transition-all group">
-                             <div className="flex-1 space-y-3">
-                                <div className="flex items-start justify-between">
-                                   <div>
-                                      <h5 className="text-lg font-extrabold text-slate-800 group-hover:text-primary transition-colors">{med.name}</h5>
-                                      <p className="text-xs font-bold text-slate-500">Mục đích: <span className="text-slate-700 italic">{med.purpose || 'Theo chỉ định của bác sĩ'}</span></p>
-                                   </div>
-                                   <div className="px-4 py-1.5 bg-white rounded-xl border border-slate-200 shadow-sm">
-                                      <span className="text-sm font-extrabold text-slate-900">{med.quantity} {med.unit}</span>
-                                   </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                                   {[
-                                      { l: 'Sáng', v: med.morning },
-                                      { l: 'Trưa', v: med.noon },
-                                      { l: 'Chiều', v: med.afternoon },
-                                      { l: 'Tối', v: med.evening }
-                                   ].map((s, si) => (
-                                      <div key={si} className={cn(
-                                        "flex flex-col items-center p-2 rounded-xl border transition-all",
-                                        s.v > 0 ? "bg-primary/5 border-primary/20 text-primary" : "bg-white border-slate-100 text-slate-300"
-                                      )}>
-                                        <span className="text-[10px] font-bold uppercase mb-1">{s.l}</span>
-                                        <span className="text-sm font-extrabold">{s.v}</span>
-                                      </div>
-                                   ))}
-                                </div>
-                             </div>
-
-                             <div className="md:w-64 space-y-3 pt-4 md:pt-0 md:border-l md:border-slate-200 md:pl-6">
-                                <div className="space-y-1">
-                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cách dùng</p>
-                                   <p className="text-sm font-bold text-slate-700 leading-tight">{med.dosage}</p>
-                                </div>
-                                <div className="space-y-1">
-                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Thời gian dùng</p>
-                                   <p className="text-xs font-bold text-slate-600 italic">"{med.instructions}"</p>
-                                </div>
-                                <div className="pt-2">
-                                   <span className="text-[10px] font-bold bg-slate-200 px-2.5 py-1 rounded-full text-slate-600">{med.duration}</span>
-                                </div>
-                             </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Doctor's Final Notes */}
-                      {record.results.prescriptionNotes && (
-                        <div className="p-6 bg-amber-50 rounded-[2rem] border border-amber-100 relative overflow-hidden group">
-                           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                              <FileText size={48} className="text-amber-600" />
-                           </div>
-                           <h5 className="text-[10px] font-extrabold text-amber-600 uppercase tracking-[0.2em] mb-2">Ghi chú & Lời dặn của bác sĩ</h5>
-                           <p className="text-sm text-amber-900 font-medium leading-relaxed relative z-10">
-                              {record.results.prescriptionNotes}
-                           </p>
-                        </div>
-                      )}
-
-                      {/* Footer Actions */}
-                      <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
-                         <div className="flex items-center gap-3">
-                            <img 
-                              src="https://api.dicebear.com/7.x/avataaars/svg?seed=doctor" 
-                              alt="Signature" 
-                              className="w-12 h-12 grayscale opacity-50"
-                            />
-                            <div>
-                               <p className="text-[10px] font-bold text-slate-400 uppercase">Chữ ký bác sĩ</p>
-                               <p className="text-xs font-bold text-slate-800 italic">{record.doctor}</p>
-                            </div>
-                         </div>
-                         <button className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
-                            <Download size={18} />
-                            Tải Đơn Thuốc (PDF)
-                         </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-           </div>
-        )}
-        {/* Add/Edit Record Modal */}
-        <AnimatePresence>
-          {isCreatingRecord && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                onClick={() => {
-                  setIsCreatingRecord(false);
-                  setEditingRecordId(null);
-                }}
-                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
-              />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-                animate={{ opacity: 1, scale: 1, y: 0 }} 
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white w-full max-w-3xl max-h-[90vh] rounded-[3rem] shadow-2xl relative z-10 overflow-hidden flex flex-col"
-              >
-                <div className="p-8 border-b border-slate-200 flex items-center justify-between bg-white">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-                      <ClipboardList size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-extrabold text-slate-900">{editingRecordId ? 'Chỉnh sửa hồ sơ bệnh án' : 'Tạo hồ sơ bệnh án mới'}</h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Chuyên môn bác sĩ • {newRecordData.date}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setIsCreatingRecord(false);
-                      setEditingRecordId(null);
-                    }} 
-                    className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
-                  {!editingRecordId && !canEditRecord(newRecordData.date) && (
-                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600">
-                      <AlertCircle size={20} />
-                      <p className="text-xs font-bold">Lưu ý: Hồ sơ chỉ có thể chỉnh sửa trong vòng 3 ngày kể từ ngày tạo.</p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase px-1 tracking-widest">Tên bệnh nhân</label>
-                      <input 
-                        type="text"
-                        value={newRecordData.patientName}
-                        onChange={(e) => setNewRecordData(prev => ({ ...prev, patientName: e.target.value }))}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                        placeholder="Nguyễn Văn A"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase px-1 tracking-widest">Triệu chứng</label>
-                      <input 
-                        type="text"
-                        value={newRecordData.symptoms}
-                        onChange={(e) => setNewRecordData(prev => ({ ...prev, symptoms: e.target.value }))}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                        placeholder="Đau bụng, buồn nôn, mệt mỏi..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase px-1 tracking-widest">Chẩn đoán y khoa</label>
-                    <input 
-                      type="text"
-                      value={newRecordData.diagnosis}
-                      onChange={(e) => setNewRecordData(prev => ({ ...prev, diagnosis: e.target.value }))}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                      placeholder="Viêm dạ dày cấp tính..."
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase px-1 tracking-widest">Tóm tắt chuyên môn</label>
-                    <textarea 
-                      value={newRecordData.summary}
-                      onChange={(e) => setNewRecordData(prev => ({ ...prev, summary: e.target.value }))}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none h-24"
-                      placeholder="Bệnh nhân có biểu hiện đau vùng thượng vị..."
-                    />
-                  </div>
-
-                  <div className="pt-8 border-t border-slate-100 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Kê đơn thuốc chi tiết</h4>
-                      <button 
-                        onClick={() => setNewRecordData(prev => ({
-                          ...prev,
-                          medications: [...prev.medications, { name: '', dosage: '', quantity: 1, unit: 'viên', price: 0, purpose: '', morning: 1, noon: 0, afternoon: 0, evening: 1, duration: '5 ngày', instructions: 'Sau ăn 30p' }]
-                        }))}
-                        className="flex items-center gap-2 text-xs font-bold text-primary hover:underline"
-                      >
-                        <Plus size={14} /> Thêm thuốc
-                      </button>
-                    </div>
-
-                    <div className="space-y-6">
-                      {newRecordData.medications.map((med, idx) => (
-                        <div key={idx} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-200 relative group">
-                          <button 
-                            onClick={() => setNewRecordData(prev => ({
-                              ...prev,
-                              medications: prev.medications.filter((_, i) => i !== idx)
-                            }))}
-                            className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                          >
-                            <X size={16} />
-                          </button>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="md:col-span-2 space-y-1">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Tên thuốc</label>
-                              <input 
-                                value={med.name}
-                                onChange={(e) => {
-                                  const meds = [...newRecordData.medications];
-                                  meds[idx].name = e.target.value;
-                                  setNewRecordData(prev => ({ ...prev, medications: meds }));
-                                }}
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Số lượng</label>
-                              <div className="flex items-center gap-2">
-                                <input 
-                                  type="number"
-                                  value={med.quantity}
-                                  onChange={(e) => {
-                                    const meds = [...newRecordData.medications];
-                                    meds[idx].quantity = Number(e.target.value);
-                                    setNewRecordData(prev => ({ ...prev, medications: meds }));
-                                  }}
-                                  className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                                />
-                                <span className="text-[10px] font-bold text-slate-400">{med.unit}</span>
-                              </div>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Đơn vị</label>
-                              <input 
-                                value={med.unit}
-                                onChange={(e) => {
-                                  const meds = [...newRecordData.medications];
-                                  meds[idx].unit = e.target.value;
-                                  setNewRecordData(prev => ({ ...prev, medications: meds }));
-                                }}
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-2 pt-2">
-                            {[
-                              { l: 'Sáng', k: 'morning' as const },
-                              { l: 'Trưa', k: 'noon' as const },
-                              { l: 'Chiều', k: 'afternoon' as const },
-                              { l: 'Tối', k: 'evening' as const }
-                            ].map(slot => (
-                              <div key={slot.k} className="space-y-1">
-                                <label className="text-[8px] font-bold text-slate-400 uppercase text-center block">{slot.l}</label>
-                                <input 
-                                  type="number"
-                                  value={med[slot.k]}
-                                  onChange={(e) => {
-                                    const meds = [...newRecordData.medications];
-                                    meds[idx][slot.k] = Number(e.target.value);
-                                    setNewRecordData(prev => ({ ...prev, medications: meds }));
-                                  }}
-                                  className="w-full px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-center outline-none"
-                                />
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Lưu ý sử dụng (Dose)</label>
-                              <input 
-                                value={med.dosage}
-                                onChange={(e) => {
-                                  const meds = [...newRecordData.medications];
-                                  meds[idx].dosage = e.target.value;
-                                  setNewRecordData(prev => ({ ...prev, medications: meds }));
-                                }}
-                                placeholder="Ngày uống 2 lần..."
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Hướng dẫn chi tiết</label>
-                              <input 
-                                value={med.instructions}
-                                onChange={(e) => {
-                                  const meds = [...newRecordData.medications];
-                                  meds[idx].instructions = e.target.value;
-                                  setNewRecordData(prev => ({ ...prev, medications: meds }));
-                                }}
-                                placeholder="Uống sau khi ăn no..."
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
-                      <p className="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest mb-2">Ghi chú & Lời dặn tổng quát</p>
-                      <textarea 
-                        value={newRecordData.prescriptionNotes}
-                        onChange={(e) => setNewRecordData(prev => ({ ...prev, prescriptionNotes: e.target.value }))}
-                        className="w-full p-4 bg-white border border-amber-200 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20"
-                        placeholder="Ăn uống lành mạnh, tránh chất kích thích..."
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
-                  <button 
-                    onClick={() => {
-                      setIsCreatingRecord(false);
-                      setEditingRecordId(null);
-                    }} 
-                    className="flex-1 py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl text-sm font-bold hover:bg-slate-100 transition-all"
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button 
-                    onClick={handleSaveRecord}
-                    className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-sm font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all"
-                  >
-                    {editingRecordId ? 'Cập nhật hồ sơ' : 'Hoàn tất & Lưu hồ sơ'}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-3">
+      <div className="w-14 h-14 mx-auto bg-slate-100 text-slate-400 rounded-2xl grid place-items-center">
+        {icon}
       </div>
+      <p className="text-slate-500 text-sm">{text}</p>
     </div>
   );
 }
