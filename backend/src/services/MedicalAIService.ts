@@ -542,16 +542,48 @@ export class MedicalAIService {
       };
     }
 
+    // Try the smart path with Gemini. If anything goes wrong (429 quota,
+    // network blip, invalid key, model deprecated) drop to the rule-based
+    // fallback rather than 500-ing — the user-facing chat must keep working.
+    try {
+      return await this.chatWithGemini(input.message, ctx, client);
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      const isQuota = /429|RESOURCE_EXHAUSTED|quota/i.test(msg);
+      console.warn(
+        `[ai] Gemini call failed (${isQuota ? 'quota' : 'other'}) — falling back. ${msg.slice(0, 200)}`,
+      );
+      const fallback = await fallbackResponse(input.message, ctx);
+      const prefix = isQuota
+        ? '⚠️ Hết hạn ngạch Gemini hôm nay — đang dùng chế độ cơ bản:\n\n'
+        : '';
+      return {
+        response: prefix + fallback,
+        toolsUsed: [],
+      };
+    }
+  }
+
+  private async chatWithGemini(
+    message: string,
+    ctx: ToolContext,
+    client: GoogleGenAI,
+  ): Promise<ChatTurnOutput> {
     // Stateless chat (one round-trip per user message). We keep the
     // conversation history client-side to avoid per-user server state.
-    const contents: any[] = [{ role: 'user', parts: [{ text: input.message }] }];
+    const contents: any[] = [{ role: 'user', parts: [{ text: message }] }];
 
     const toolsUsed: string[] = [];
     let safety = 0;
 
+    // gemini-2.5-flash is the current cost/quality sweet spot with a healthy
+    // free-tier quota and full function-calling support. Override via env if
+    // you need to try lite or pro tier.
+    const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
     while (safety++ < 4) {
       const response = await client.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: MODEL,
         contents,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
