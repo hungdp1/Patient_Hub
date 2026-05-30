@@ -12,7 +12,7 @@
 - **AI**: `@google/genai` (Gemini) — function calling cho trợ lý y tế
 - **Thanh toán**: `@payos/node`
 - **Frontend**: React 19, Vite 6, TailwindCSS v4, react-router-dom
-- **Hạ tầng**: Docker, nginx, docker-compose
+- **Hạ tầng**: Docker
 
 ### ver2
 - **Backend**: Node.js, Express 4, TypeScript 5, `pg`
@@ -22,43 +22,43 @@
   - **Random Forest** — chẩn đoán bệnh từ triệu chứng
   - **Reinforcement Learning** (Q-learning) — xếp lịch xét nghiệm tối ưu
 - **Frontend**: React 19, Vite 6, TypeScript, TailwindCSS v4, react-router-dom 
-- **Hạ tầng**: Docker Compose (3 container: web/nginx, backend, postgres 16), **Caddy**
+- **Hạ tầng**: Docker, **Caddy**
 
 ## 2. Cấu trúc thư mục
 
-### ver1 — patient-centric, Prisma
+### ver1
 
 ```
 ver1/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma        # ~20 model (User, Patient, Doctor, Appointment, MedicalRecord,
-│   │   │                        #  LabResult, Prescription, Payment, Notification, AuditLog, Chat…)
+│   │   ├── schema.prisma      
+│   │   │                      
 │   │   └── schema.sql
-│   ├── seed.ts                  # seed dữ liệu mẫu
+│   ├── seed.ts               
 │   └── src/
 │       ├── server.ts / index.ts
 │       ├── controllers/         # auth, data, user, ai, payos
-│       ├── services/            # AuthService, DataService, MedicalAIService, PayOSService, UserService
-│       ├── repositories/        # 1 repository cho mỗi entity (Appointment, LabResult, Payment…)
+│       ├── services/           
+│       ├── repositories/      
 │       ├── routes/              # auth, data, user, ai, payos
 │       ├── middleware/          # auth (JWT), error
 │       ├── realtime/            # RealTimeServer (Socket.IO)
-│       ├── lib/                 # prismaClient, publicSelects
+│       ├── lib/             
 │       └── utils/               # crypto, password, validation, errorHandler
 ├── frontend/
 │   └── src/
-│       ├── pages/               # Login, Dashboard, AdminDashboard, MedicalRecords, LabResults,
-│       │                        #  Prescriptions, Payment, Scheduling, Profile, AIAssistant,
-│       │                        #  HospitalServices, MedicalLibrary
-│       ├── components/          # Layout, Chatbot, chat/, layout/ (Header, Sidebar)
-│       ├── services/            # auth, data, user, chat, socket
-│       ├── routes/              # ProtectedRoute, routeConfig
+│       ├── pages/            
+│       │                       
+│       │                     
+│       ├── components/       
+│       ├── services/          
+│       ├── routes/              
 │       └── hooks/ lib/ constants/
 └── testing/                     # DATABASE_SETUP.md, DEPLOY.md, HUONG_DAN_CHAY.md, docker-compose.yml
 ```
 
-### ver2 — HIS đa vai trò, SQL thuần, vertical slice
+### ver2
 
 ```
 ver2/
@@ -83,7 +83,7 @@ ver2/
 │   └── src/
 │       ├── auth/                # AuthContext, ProtectedRoute
 │       ├── layouts/             # PublicLayout, PatientLayout, StaffLayout
-│       ├── lib/                 # api.ts (axios), format.ts
+│       ├── lib/               
 │       └── pages/
 │           ├── public/       
 │           ├── patient/         
@@ -94,7 +94,7 @@ ver2/
 │   └── rl scheduling/           # xếp lịch xét nghiệm: env, agent (Q-learning), train, serve
 ├── ml/data/                     # dữ liệu nguồn cho mô hình 
 ├── caddy/                       # Caddyfile
-├── docker/                      # backend-entrypoint.sh (chờ DB + auto migrate)
+├── docker/                     
 ├── postman/                     # Collection test API đầy đủ (mọi module)
 ├── dist/                        
 ├── docker-compose.yml / Dockerfile
