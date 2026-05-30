@@ -1,0 +1,74 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createAppointment = createAppointment;
+exports.listAppointments = listAppointments;
+exports.getAppointment = getAppointment;
+exports.startExamination = startExamination;
+exports.cancelAppointment = cancelAppointment;
+exports.reassignDoctor = reassignDoctor;
+const error_1 = require("../../middleware/error");
+const appointmentsService = __importStar(require("./appointments.service"));
+function actor(req) {
+    if (!req.user)
+        throw new error_1.AppError(401, 'Chưa xác thực');
+    return req.user;
+}
+async function createAppointment(req, res) {
+    const data = await appointmentsService.createAppointment(req.body, actor(req));
+    res.status(201).json({ data });
+}
+async function listAppointments(req, res) {
+    const data = await appointmentsService.listAppointments(actor(req), req.query);
+    res.json({ data });
+}
+async function getAppointment(req, res) {
+    const data = await appointmentsService.getAppointment(req.params['id'], actor(req));
+    res.json({ data });
+}
+async function startExamination(req, res) {
+    const data = await appointmentsService.startExamination(req.params['id'], actor(req));
+    res.json({ data });
+}
+async function cancelAppointment(req, res) {
+    const data = await appointmentsService.cancelAppointment(req.params['id'], actor(req));
+    res.json({ data });
+}
+async function reassignDoctor(req, res) {
+    const { doctor_id } = req.body;
+    const data = await appointmentsService.reassignDoctor(req.params['id'], doctor_id, actor(req));
+    res.json({ data });
+}
+//# sourceMappingURL=appointments.controller.js.map

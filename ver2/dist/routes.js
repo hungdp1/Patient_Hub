@@ -1,0 +1,44 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_routes_1 = __importDefault(require("./modules/auth/auth.routes"));
+const departments_routes_1 = __importDefault(require("./modules/departments/departments.routes"));
+const library_routes_1 = __importDefault(require("./modules/library/library.routes"));
+const lab_rooms_routes_1 = __importDefault(require("./modules/lab-rooms/lab-rooms.routes"));
+const staff_routes_1 = __importDefault(require("./modules/staff/staff.routes"));
+const patients_routes_1 = __importDefault(require("./modules/patients/patients.routes"));
+const appointments_routes_1 = __importDefault(require("./modules/appointments/appointments.routes"));
+const examination_routes_1 = __importDefault(require("./modules/examination-sessions/examination.routes"));
+const test_orders_routes_1 = __importDefault(require("./modules/test-orders/test-orders.routes"));
+const prescriptions_routes_1 = __importDefault(require("./modules/prescriptions/prescriptions.routes"));
+const invoices_routes_1 = __importDefault(require("./modules/invoices/invoices.routes"));
+const notifications_routes_1 = __importDefault(require("./modules/notifications/notifications.routes"));
+const reports_routes_1 = __importDefault(require("./modules/reports/reports.routes"));
+const chat_routes_1 = __importDefault(require("./modules/chat/chat.routes"));
+const chatbot_routes_1 = __importDefault(require("./modules/ai/chatbot.routes"));
+const manager_routes_1 = __importDefault(require("./modules/manager/manager.routes"));
+const router = (0, express_1.Router)();
+router.get('/health', (_req, res) => {
+    res.json({ status: 'ok', ts: new Date().toISOString() });
+});
+router.use('/auth', auth_routes_1.default);
+router.use('/departments', departments_routes_1.default);
+router.use('/library', library_routes_1.default);
+router.use('/lab-rooms', lab_rooms_routes_1.default);
+router.use('/staff', staff_routes_1.default);
+router.use('/patients', patients_routes_1.default);
+router.use('/appointments', appointments_routes_1.default);
+router.use('/examination-sessions', examination_routes_1.default);
+router.use('/test-orders', test_orders_routes_1.default);
+router.use('/prescriptions', prescriptions_routes_1.default);
+router.use('/invoices', invoices_routes_1.default);
+router.use('/notifications', notifications_routes_1.default);
+router.use('/reports', reports_routes_1.default);
+router.use('/chat', chat_routes_1.default);
+router.use('/chatbot', chatbot_routes_1.default);
+router.use('/manager', manager_routes_1.default);
+exports.default = router;
+//# sourceMappingURL=routes.js.map
