@@ -1,1 +1,0 @@
-{"version":3,"file":"HospitalServiceRepository.d.ts","sourceRoot":"","sources":["../../src/repositories/HospitalServiceRepository.ts"],"names":[],"mappings":"AAEA,MAAM,WAAW,0BAA0B;IACzC,kBAAkB,IAAI,OAAO,CAAC,OAAO,EAAE,CAAC,CAAC;CAC1C;AAED,qBAAa,yBAA0B,YAAW,0BAA0B;IAC7D,kBAAkB,IAAI,OAAO,CAAC,OAAO,EAAE,CAAC;CAKtD;AAED,eAAO,MAAM,yBAAyB,2BAAkC,CAAC"}
