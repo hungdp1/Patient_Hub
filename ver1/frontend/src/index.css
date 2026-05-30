@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   Mediflow Design System — Modern Minimal Trust
+   Blue-teal palette, generous whitespace, soft elevation.
+   ───────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Brand */
+  --color-primary: #0284c7;       /* sky-600 — main brand, buttons, links */
+  --color-primary-dark: #0369a1;  /* sky-700 — hover/active */
+  --color-primary-soft: #e0f2fe;  /* sky-100 — soft tints, pills */
+  --color-primary-50: #f0f9ff;    /* sky-50  — very subtle bg */
+
+  /* Accent (healthy / positive) */
+  --color-accent: #0d9488;        /* teal-600 */
+  --color-accent-soft: #ccfbf1;   /* teal-100 */
+
+  /* Semantic */
+  --color-success: #10b981;       /* emerald-500 */
+  --color-warning: #f59e0b;       /* amber-500 */
+  --color-danger:  #ef4444;       /* red-500 */
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc; /* slate-50 */
+  --color-border: #e2e8f0;        /* slate-200 */
+  --color-border-soft: #f1f5f9;   /* slate-100 */
+
+  /* Backwards-compat aliases used by existing pages */
+  --color-secondary: #64748b;     /* slate-500 */
+
+  /* Radii */
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+
+  /* Elevation — soft, healthcare-grade */
+  --shadow-soft:  0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.03);
+  --shadow-card:  0 1px 3px rgb(15 23 42 / 0.05), 0 4px 12px rgb(15 23 42 / 0.04);
+  --shadow-pop:   0 4px 6px rgb(15 23 42 / 0.05), 0 12px 32px rgb(15 23 42 / 0.08);
+  --shadow-glow:  0 8px 32px rgb(2 132 199 / 0.18);
+}
+
+@layer base {
+  html {
+    font-feature-settings: "cv11", "ss01", "ss03"; /* nicer Inter glyphs */
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased font-sans;
+    background-image:
+      radial-gradient(at 0% 0%, rgb(186 230 253 / 0.35) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgb(204 251 241 / 0.25) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4 { letter-spacing: -0.02em; }
+  ::selection { background: var(--color-primary-soft); color: var(--color-primary-dark); }
+
+  /* Pleasant custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(148 163 184 / 0.35);
+    border-radius: 999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(148 163 184 / 0.55);
+  }
+}
+
+@layer components {
+  /* ─── Cards ─────────────────────────────────────── */
+  .card {
+    @apply bg-white border border-slate-200/70 rounded-3xl;
+    box-shadow: var(--shadow-card);
+  }
+  .card-flat {
+    @apply bg-white border border-slate-200/70 rounded-2xl;
+    box-shadow: var(--shadow-soft);
+  }
+  .card-shadow { /* legacy alias kept for compat */
+    @apply bg-white border border-slate-200/70 rounded-2xl;
+    box-shadow: var(--shadow-soft);
+  }
+  .card-interactive {
+    @apply bg-white border border-slate-200/70 rounded-3xl transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+  .card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-pop);
+  }
+
+  /* ─── Buttons ───────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-sm font-semibold rounded-xl transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-primary/40;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-sm font-semibold rounded-xl transition-all duration-200
+           bg-primary text-white
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-primary/40;
+    box-shadow: 0 1px 2px rgb(2 132 199 / 0.18), 0 4px 12px rgb(2 132 199 / 0.18);
+  }
+  .btn-primary:hover { @apply bg-primary-dark; }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-sm font-semibold rounded-xl transition-all duration-200
+           bg-white text-slate-700 border border-slate-200 hover:bg-slate-50
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-primary/40;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           text-sm font-semibold rounded-xl transition-all duration-200
+           bg-transparent text-slate-600 hover:bg-slate-100
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           focus-visible:ring-primary/40;
+  }
+
+  /* ─── Form fields ───────────────────────────────── */
+  .input {
+    @apply w-full px-4 py-3 bg-white text-slate-900
+           border border-slate-200 rounded-xl outline-none
+           transition-all duration-200
+           placeholder:text-slate-400
+           focus:border-primary focus:ring-4 focus:ring-primary/10;
+  }
+  .label {
+    @apply text-sm font-medium text-slate-700 flex items-center gap-2 mb-1.5;
+  }
+
+  /* ─── Pills / badges ────────────────────────────── */
+  .pill {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5
+           text-xs font-semibold rounded-full border;
+  }
+  .pill-primary {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-sky-50 text-sky-700 border-sky-200;
+  }
+  .pill-success {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-emerald-50 text-emerald-700 border-emerald-200;
+  }
+  .pill-warning {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-amber-50 text-amber-700 border-amber-200;
+  }
+  .pill-danger {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-rose-50 text-rose-700 border-rose-200;
+  }
+  .pill-neutral {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-slate-50 text-slate-700 border-slate-200;
+  }
+  .pill-accent {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full border
+           bg-teal-50 text-teal-700 border-teal-200;
+  }
+
+  /* ─── Section labels ────────────────────────────── */
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500;
+  }
+
+  /* ─── Glass surface ─────────────────────────────── */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40;
+  }
+
+  /* ─── Markdown (chatbot) ────────────────────────── */
+  .markdown-body { @apply space-y-2 text-sm leading-relaxed; }
+  .markdown-body p { @apply mb-2; }
+  .markdown-body ul { @apply list-disc ml-5 space-y-1 my-2; }
+  .markdown-body ol { @apply list-decimal ml-5 space-y-1 my-2; }
+  .markdown-body strong { @apply font-bold text-slate-900; }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+    @apply font-bold mt-3 mb-1.5 text-slate-900;
+  }
+  .markdown-body code {
+    @apply bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono;
+  }
+}

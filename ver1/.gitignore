@@ -1,0 +1,27 @@
+# Secrets / environment (NEVER commit real secrets)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+backend/dist/
+frontend/dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.claude/
+
+# Prisma local
+backend/prisma/*.db

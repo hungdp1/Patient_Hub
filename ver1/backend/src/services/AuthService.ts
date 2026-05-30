@@ -1,0 +1,153 @@
+import jwt from 'jsonwebtoken';
+import { ApiError } from '../utils/errorHandler';
+import { hashPassword, comparePassword } from '../utils/password';
+import { IUserRepository, userRepository, CreateUserData } from '../repositories/UserRepository';
+import { IAuditRepository, auditRepository } from '../repositories/AuditRepository';
+import { UserRole } from '@prisma/client';
+
+export interface AuthResult {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+}
+
+export interface IAuthService {
+  login(input: { email?: string; phoneNumber?: string; password: string }): Promise<AuthResult>;
+  register(input: {
+    email?: string;
+    phoneNumber: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: UserRole;
+  }): Promise<AuthResult>;
+}
+
+export class AuthService implements IAuthService {
+  constructor(
+    private userRepository: IUserRepository,
+    private auditRepository: IAuditRepository,
+  ) {}
+
+  private createToken(payload: { id: string; role: string }): string {
+    const secret = process.env.JWT_SECRET || 'patienthub-local-secret';
+    if (!process.env.JWT_SECRET) {
+      console.warn('Warning: JWT_SECRET is not configured. Using development fallback secret.');
+    }
+
+    return jwt.sign(payload, secret as jwt.Secret, {
+      expiresIn: process.env.JWT_EXPIRATION || '7d',
+    } as jwt.SignOptions);
+  }
+
+  private async findUserByIdentifier(input: { email?: string; phoneNumber?: string }) {
+    if (input.email) {
+      const user = await this.userRepository.findByEmail(input.email);
+      if (user) return user;
+    }
+
+    if (input.phoneNumber) {
+      return this.userRepository.findByPhoneNumber(input.phoneNumber);
+    }
+
+    return null;
+  }
+
+  public async login(input: { email?: string; phoneNumber?: string; password: string }): Promise<AuthResult> {
+    const user = await this.findUserByIdentifier({ email: input.email, phoneNumber: input.phoneNumber });
+
+    if (!user || !user.passwordHash) {
+      throw new ApiError(401, 'Số điện thoại hoặc mật khẩu không đúng');
+    }
+
+    const isValid = await comparePassword(input.password, user.passwordHash);
+    if (!isValid) {
+      throw new ApiError(401, 'Số điện thoại hoặc mật khẩu không đúng');
+    }
+
+    const token = this.createToken({ id: user.id, role: user.role });
+
+    await this.auditRepository.create({
+      userId: user.id,
+      entity: 'User',
+      entityId: user.id,
+      action: 'LOGIN',
+      description: 'User login successful',
+    });
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    };
+  }
+
+  public async register(input: {
+    email?: string;
+    phoneNumber: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: UserRole;
+  }): Promise<AuthResult> {
+    const email = input.email?.trim() || `${input.phoneNumber.replace(/\D/g, '')}@patienthub.local`;
+    const existingByEmail = await this.userRepository.findByEmail(email);
+    if (existingByEmail) {
+      throw new ApiError(400, 'Email đã được sử dụng');
+    }
+
+    const existingByPhone = await this.userRepository.findByPhoneNumber(input.phoneNumber);
+    if (existingByPhone) {
+      throw new ApiError(400, 'Số điện thoại đã được đăng ký');
+    }
+
+    const passwordHash = await hashPassword(input.password);
+    const userData: CreateUserData = {
+      email,
+      phoneNumber: input.phoneNumber,
+      passwordHash,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      role: (input.role as UserRole) || UserRole.PATIENT,
+    };
+
+    const user = await this.userRepository.createUser(userData);
+    if (user.role === UserRole.PATIENT) {
+      await this.userRepository.createPatient(user.id);
+    }
+
+    await this.auditRepository.create({
+      userId: user.id,
+      entity: 'User',
+      entityId: user.id,
+      action: 'CREATE',
+      description: 'New user registered',
+      resourceAfter: JSON.stringify({ email: user.email, role: user.role }),
+    });
+
+    const token = this.createToken({ id: user.id, role: user.role });
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
+    };
+  }
+}
+
+export const authService = new AuthService(userRepository, auditRepository);
