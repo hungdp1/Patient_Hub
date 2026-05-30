@@ -3,7 +3,7 @@
 | Thư mục | Tên gọi | Mô tả ngắn |
 |---|---|---|
 | [`ver1/`](ver1/) | **Patient Hub v1** | Bản đầu tiên — kiến trúc xoay quanh **bệnh nhân 
-| [`ver2/`](ver2/) | **Patient Hub 2** | Bản viết lại toàn diện — **quản lý bệnh viện đầy đủ (HIS)** đa vai trò, dùng **SQL thuần (pg)**, có **mô hình AI tự huấn luyện** 
+| [`ver2/`](ver2/) | **Patient Hub 2** | Bản viết lại toàn diện — **quản lý bệnh viện đầy đủ**, có **mô hình AI tự huấn luyện** 
 
 ## 1. Công nghệ sử dụng
 
